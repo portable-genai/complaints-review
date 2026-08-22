@@ -1,0 +1,133 @@
+# Complaints & Conduct File Review (B6) : runtime configuration.
+#
+# Switch the entire managed stack to on-prem by setting COMPLAINTS_PROFILE=onprem
+# (or profile: onprem below). Nothing in src/complaints_review/domain changes.
+
+project_id: ${GOOGLE_CLOUD_PROJECT:-your-gcp-project}
+region: asia-southeast1            # Singapore : MAS/HKMA/APRA/FSA data residency
+profile: ${COMPLAINTS_PROFILE}         # gcp | local | platform | onprem. Deliberately has NO :-local fallback: an unset COMPLAINTS_PROFILE must stay unset rather than materialising here as a written-down choice, because "nobody chose" and "chose local" get different postures. Prod sets COMPLAINTS_PROFILE=gcp explicitly
+kms_key: ${COMPLAINTS_KMS_KEY:-}       # regional Cloud KMS key for CMEK
+grounding_enabled: ${COMPLAINTS_GROUNDING_ENABLED:-false}
+
+models:
+  reasoning: gemini-3.5-flash          # GA : summary, categorisation, drafting (thinking=high)
+  triage: gemini-3.1-flash-lite        # GA : routing / cheap classification
+  hard_reasoning: gemini-3.1-pro       # Preview : OFF unless use_hard_reasoning=true
+  use_hard_reasoning: false
+
+document_ai:
+  location: asia-southeast1
+  processor_id: ${COMPLAINTS_DOCAI_PROCESSOR:-}
+  processor_version: ${COMPLAINTS_DOCAI_VERSION:-}
+
+agent_search:
+  data_store_id: complaints-policy-kb
+  engine_id: complaints-review-engine
+  location: asia-southeast1
+  serving_config: default_search
+
+model_armor:
+  template_id: complaints-guardrail
+  host: modelarmor.asia-southeast1.rep.googleapis.com
+
+dlp:
+  inspect_template: ${COMPLAINTS_DLP_INSPECT_TEMPLATE:-}
+  deidentify_template: ${COMPLAINTS_DLP_DEIDENTIFY_TEMPLATE:-}
+
+logging:
+  log_name: complaints-review-audit
+  bucket: complaints-review-worm
+  retention_days: 2557               # ~7 years; bucket is locked (irreversible) in prod
+
+agent_engine:
+  resource_name: ${COMPLAINTS_AGENT_ENGINE:-}
+  display_name: complaints-review
+
+# Bank-owned deterministic complaint policy. These are reference defaults only.
+policy:
+  deadline_days: 21
+  vulnerability_keywords: [vulnerable, bereave, bereaved, disab, mental health, illness, terminal, elderly, dementia, financial hardship, hardship, distress, suicid]
+  escalating_flags: [systemic_issue, regulatory_breach, vulnerable_customer]
+  high_severities: [high, critical]
+
+# SDK-free 'local' profile stores. Empty => per-package defaults under
+# ~/.complaints_review/ ; tests pass ':memory:' for ephemeral, deterministic stores.
+local:
+  db_path: ${COMPLAINTS_LOCAL_DB:-}        # SQLite FTS5 knowledge-base index
+  audit_path: ${COMPLAINTS_LOCAL_AUDIT:-}  # append-only local audit store
+
+# ----------------------------------------------------------------------------- #
+# Port -> adapter bindings. The container picks the entry for the active profile,
+# falling back to the 'gcp' entry. These dotted paths are the build contract:
+# each adapter class takes a single Settings argument.
+# ----------------------------------------------------------------------------- #
+adapters:
+  # End-user identity (authentication). local = seeded dev personas, NO IdP/AD/LDAP, so
+  # demos and tests run offline; gcp/platform = verify the IAP-injected signed assertion
+  # (auth configured ON the GCP service); onprem = client IdP placeholder. The resolved
+  # Principal supplies the audit actor + entitlement principals, replacing any client-
+  # asserted actor/ACL.
+  identity:
+    gcp: complaints_review.adapters.gcp.iap_identity:IapIdentityAdapter
+    platform: complaints_review.adapters.gcp.iap_identity:IapIdentityAdapter
+    local: complaints_review.adapters.local.identity:LocalPersonaIdentityAdapter
+    onprem: complaints_review.adapters.onprem.identity:OnPremIdentityAdapter
+  extraction:
+    gcp: complaints_review.adapters.gcp.document_ai_extraction:DocumentAiExtractionAdapter
+    platform: complaints_review.adapters.gcp.document_ai_extraction:DocumentAiExtractionAdapter
+    local: complaints_review.adapters.local.extraction:LocalDocumentExtractionAdapter
+    onprem: complaints_review.adapters.onprem.extraction:OnPremExtractionAdapter
+  knowledge_base:
+    gcp: complaints_review.adapters.gcp.agent_search_kb:AgentSearchKnowledgeBaseAdapter
+    local: complaints_review.adapters.local.knowledge_base:LocalFtsKnowledgeBaseAdapter
+    platform: complaints_review.adapters.platform.remote_knowledge_base:RemoteKnowledgeBaseAdapter
+    onprem: complaints_review.adapters.onprem.knowledge_base:OnPremKnowledgeBaseAdapter
+  llm:
+    gcp: complaints_review.adapters.gcp.gemini_llm:GeminiLLMAdapter
+    platform: complaints_review.adapters.gcp.gemini_llm:GeminiLLMAdapter
+    local: complaints_review.adapters.local.llm:LocalDeterministicLLMAdapter
+    onprem: complaints_review.adapters.onprem.llm:OnPremLLMAdapter
+  guardrail:
+    gcp: complaints_review.adapters.gcp.model_armor_guardrail:ModelArmorGuardrailAdapter
+    local: complaints_review.adapters.local.guardrail:LocalHeuristicGuardrailAdapter
+    platform: complaints_review.adapters.platform.remote_guardrail:RemoteGuardrailAdapter
+    onprem: complaints_review.adapters.onprem.guardrail:OnPremGuardrailAdapter
+  redaction:
+    gcp: complaints_review.adapters.gcp.dlp_redaction:DlpRedactionAdapter
+    local: complaints_review.adapters.local.redaction:LocalRegexRedactionAdapter
+    platform: complaints_review.adapters.platform.remote_redaction:RemoteRedactionAdapter
+    onprem: complaints_review.adapters.onprem.redaction:OnPremRedactionAdapter
+  audit:
+    gcp: complaints_review.adapters.gcp.cloud_logging_audit:CloudLoggingAuditAdapter
+    local: complaints_review.adapters.local.audit:LocalAppendOnlyAuditAdapter
+    platform: complaints_review.adapters.platform.remote_audit:RemoteAuditAdapter
+    onprem: complaints_review.adapters.onprem.audit:OnPremAuditAdapter
+  tracer:
+    gcp: complaints_review.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
+    platform: complaints_review.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
+    local: complaints_review.adapters.local.tracer:LocalNoopTracerAdapter
+    onprem: complaints_review.adapters.onprem.tracer:OnPremTracerAdapter
+  evaluation:
+    gcp: complaints_review.adapters.gcp.genai_eval:GenAiEvalAdapter
+    local: complaints_review.adapters.local.evaluation:LocalOfflineEvalAdapter
+    platform: complaints_review.adapters.platform.remote_evaluation:RemoteEvaluationAdapter
+    onprem: complaints_review.adapters.onprem.evaluation:OnPremEvalAdapter
+  registry:
+    gcp: complaints_review.adapters.gcp.a2a_registry:A2ARegistryAdapter
+    local: complaints_review.adapters.local.registry:LocalRegistryAdapter
+    platform: complaints_review.adapters.platform.remote_registry:RemoteRegistryAdapter
+    onprem: complaints_review.adapters.onprem.registry:OnPremRegistryAdapter
+  tool_catalog:
+    gcp: complaints_review.adapters.gcp.mcp_tool_catalog:McpToolCatalogAdapter
+    platform: complaints_review.adapters.gcp.mcp_tool_catalog:McpToolCatalogAdapter
+    local: complaints_review.adapters.local.tool_catalog:LocalToolCatalogAdapter
+    onprem: complaints_review.adapters.onprem.tool_catalog:OnPremToolCatalogAdapter
+  # Rule R8: a complaint review always requires human review, so the producer routes it to the
+  # Hrz7 Human-Review & Maker-Checker Console rather than terminating in a per-repo boolean.
+  # gcp/platform submit over S2S; local enqueues to an in-memory outbox; onprem is the sovereign
+  # placeholder that must be wired to the on-prem console before it can route.
+  review_router:
+    gcp: complaints_review.adapters.platform.review_router:PlatformReviewRouter
+    platform: complaints_review.adapters.platform.review_router:PlatformReviewRouter
+    local: complaints_review.adapters.local.review_router:LocalReviewRouter
+    onprem: complaints_review.adapters.onprem.review_router:OnPremReviewRouter

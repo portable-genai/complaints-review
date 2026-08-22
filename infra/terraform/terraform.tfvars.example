@@ -1,0 +1,29 @@
+# terraform.tfvars.example : copy to terraform.tfvars and fill in.
+#
+# Only project_id, the residency values and a couple of genuinely per-tenant values are
+# variables; everything else (service ids, template names) is concrete and in-region. NEVER commit a
+# real terraform.tfvars (it is gitignored).
+
+# Target project (required). Single-tenant, Singapore-resident.
+project_id = "your-sg-project"
+
+# The region is chosen at deploy time and validated against the residency allowlist.
+# Leave the defaults unless you have completed a residency review: deploying elsewhere
+# means setting BOTH values below (P-03).
+# allowed_regions = ["asia-southeast1"]
+# region          = "asia-southeast1"
+
+# Organization id (required for Org Policy + Access Context Manager).
+org_id = "000000000000"
+
+# Billing account (optional, used by Assured Workloads / FinOps tagging).
+# billing_account = "XXXXXX-XXXXXX-XXXXXX"
+
+# Access Context Manager policy id (numeric). Required when enable_vpc_sc = true.
+# access_policy_id = "111111111111"
+
+# WORM audit retention in days (>= 2557 ~ 7 years). The bucket lock is IRREVERSIBLE.
+# retention_days = 2557
+
+# Create the VPC-SC perimeter. Apply once with false, add your CI identity, then set true.
+enable_vpc_sc = false

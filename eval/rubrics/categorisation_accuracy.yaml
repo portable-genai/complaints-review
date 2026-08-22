@@ -1,0 +1,41 @@
+# Categorisation-accuracy rubric : A4 AI Quality & Model-Risk gate (P-08).
+#
+# "Categorisation accuracy" measures whether the complaint category the service assigns
+# matches the golden category for the example. The category drives routing, regulatory
+# reporting and remediation, so a wrong category is a real conduct risk.
+#
+# Production scorer: the Gen AI evaluation service on the Gemini Enterprise Agent Platform,
+# routed through complaints_review.adapters.gcp.genai_eval:GenAiEvalAdapter.
+# Offline/CI scorer: the deterministic exact-match check in eval/run_eval.py.
+
+metric: categorisation_accuracy
+description: >
+  Fraction of examples whose assigned ComplaintCategory equals the golden category.
+threshold: 0.85          # report fails if score < 0.85
+direction: maximize
+applies_to:
+  - Categorization.category
+
+criteria:
+  - id: category_exact_match
+    description: The assigned category equals the golden category.
+    weight: 1.0
+
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
+
+# Companion metrics evaluated by the same gate (run_eval.py builds an EvalReport whose
+# .passed is the AND of all of these). Thresholds are the promotion bar in SPEC A4/P-08.
+companion_metrics:
+  citation_accuracy:
+    threshold: 0.90
+    description: >
+      Every cited source was actually retrievable (precision) and every must-cite source
+      for the example appears in the citations (recall). Averaged over the dataset.
+  pii_safety:
+    threshold: 0.99
+    description: >
+      No unredacted customer PII (NRIC, email) survives into any artifact, and the draft
+      response is always a draft and is never auto-sent. A single failure drops the metric
+      below 0.99.

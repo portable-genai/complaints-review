@@ -1,0 +1,111 @@
+# Common-base practices audit
+
+- **Repo:** `complaints-review`
+- **Catalog id:** Doc6 (package `complaints_review`, env prefix `COMPLAINTS`)
+- **Catalogue reference:** [`common-base-practices.md`](https://github.com/portable-genai/.github/blob/main/common-base-practices.md) (checks A1..G7)
+- **Authoritative source:** reconciled to the maintainer's cross-repository audit matrix, authoritative on verdicts.
+- **Note:** Each check was re-run against the current tree (greps run, files opened), with
+  this repo's package (`complaints_review`) and env prefix (`COMPLAINTS`) substituted into
+  the catalogue's Check commands. The reference build is Doc1 (`cdd-sow-research`); this
+  scorecard mirrors its structure.
+
+Applicability: Doc6 ships a UI (`ui/`) and Terraform (`infra/terraform/`), so `[ui]` and
+`[infra]` checks apply, except C8 (web-login hardening) which is **N-A** because Doc6 owns
+no login: end-user identity is the IAP-injected assertion (gcp/platform) or a seeded dev
+persona (local), never an OIDC flow this repo implements. **Load-bearing** checks (a FAIL
+breaks a shared catalog guarantee) are A1-A6, C1-C5, D1-D3 and E1.
+
+Every row below is reconciled
+to the maintainer's cross-repository audit matrix, which is authoritative on verdicts.
+All 15 load-bearing checks (A1-A6, C1-C5, D1-D3, E1) PASS and none FAIL.
+
+| Check | Verdict | Evidence / gap |
+|---|---|---|
+| **A1** Hexagonal core, stdlib-only domain `[all]` **(load-bearing)** | PASS | `grep -rE "google\|fastapi\|httpx\|pydantic\|boto3\|azure" src/complaints_review/domain/` returns nothing. |
+| **A2** Ports are `@runtime_checkable` Protocols, re-exported once `[all]` **(load-bearing)** | PASS | 11 Protocols across 7 files under `ports/`, each `@runtime_checkable`; re-exported from `ports/__init__.py`; `test_port_parity.py::test_all_protocols_are_runtime_checkable` asserts it. |
+| **A3** Swappable profiles by one config value `[all]` **(load-bearing)** | PASS | `COMPLAINTS_PROFILE = local\|gcp\|platform\|onprem`; per-port `adapters:` map in `config/settings.yaml`; offline suite runs on `pip install -e ".[dev]"` with no GCP SDK. |
+| **A4** One adapter constructor `Adapter(settings)` `[all]` **(load-bearing)** | PASS | `test_port_parity.py::test_adapter_constructs_with_single_settings_arg` parametrises over `SDK_FREE_PROFILES` (onprem, local) x every port. |
+| **A5** Lazy cloud imports in cloud adapters `[all]` **(load-bearing)** | PASS | `grep -n "^from google\|^import google" src/complaints_review/adapters/gcp/*.py` returns nothing; offline leg imports all modules. |
+| **A6** Contract tests enforce the hexagon; port map cannot drift `[all]` **(load-bearing)** | PASS | `test_port_parity.py` proves structural parity + single-settings-arg + runtime_checkable + onprem/local bindings, and now `test_port_protocols_matches_settings_adapters` is a set-equality drift guard that fails on BOTH directions (a `settings.adapters` binding absent from `PORT_PROTOCOLS`, or a mapped port with no binding), so the map and `config/settings.yaml` cannot silently drift apart. `test_behavioral_parity.py` adds boundary parity: for `redaction` and `knowledge_base` the same request yields the IDENTICAL domain object from the `local` adapter and the real `platform` httpx delegate (mocked with respx at the A1 `/v1/redact` and A2 `/v1/search` contracts); `knowledge_base` and the deterministic `llm` stub are proven identical across reruns; every `onprem` placeholder fails fast; and the full `ComplaintReviewService.review` pipeline runs under `local` and fails fast under `onprem` with only a profile change. |
+| **A7** Kernel vs vertical split in the domain `[all]` | PASS | The arrow is inverted and executed, not asserted in prose: `domain/kernel.py` now DEFINES the vertical-neutral machinery (citations, retrieval, the LLM envelope, guardrail/redaction verdicts, audit event, eval report, agent cards, tool specs, `Severity`, `utcnow`) and imports nothing from `complaints_review`; `domain/models.py` keeps the complaint artifacts and re-exports every kernel name, so no import site changed. `tests/unit/test_kernel_boundary.py` proves the direction by importing the kernel in a FRESH interpreter and asserting `domain.models` never lands in `sys.modules`. RED proof: against the previous re-export shim the same file scored 17 failed / 25 passed; after the split, 42 passed. |
+| **A8** Consume platform horizontals via thin delegates `[all]` | PASS | `adapters/platform/remote_*.py` are 51-117 lines, marshalling only; guardrail, redaction, KB, audit, evaluation and registry each have a `platform` binding. |
+| **B1** Consequential math is deterministic, pure, replayable `[agentic]` | PASS | The authoritative decisions are pure stdlib: mandatory conduct flags + deadline breach (`categorization_service._deterministic_flags` / `_deadline_breached`, deterministic flags win the merge) and escalation (`review_policy.escalates`); category/severity are LLM classifications (allowed). Unit-tested in `test_categorization.py`, `test_policy_and_serialization.py`. |
+| **B2** Every claim carries a citation; empty retrieval is a hard error `[agentic]` | PASS | `Citation` on every claim-bearing model; `_grounded.py` retrieve-then-cite; `review_service._prepare` raises `RetrievalEmptyError` when passages are empty (`test_empty_corpus_raises`). |
+| **B3** Maker-checker on every consequential output `[agentic]` | PASS | `requires_human_review: bool = True` default; `ComplaintReviewPolicy.requires_review()` always True, `draft_is_sendable()` always False; `test_review_always_required`, `test_draft_response_is_always_a_draft_never_sent`. |
+| **B4** Bank-owned policy numbers in config, defaults = reference `[all]` | PASS | `domain/policy.py` owns the frozen complaint policy; `policy:` config controls the deadline, vulnerability signals and escalation sets, composition-root wiring is explicit, and an override test changes the deterministic boundary. |
+| **B5** Open taxonomy: `StrEnum` vocabularies, engines typed on `str` `[all]` | PASS | All nine vocabularies are `StrEnum` (via the shared `hex-service-kit` commons): members ARE their wire values and `.value` call sites are unchanged. |
+| **C1** Identity resolved server-side; client actor/ACL discarded `[all]` **(load-bearing)** | PASS | `api/schemas.py` documents "intentionally no `actor` field"; `api/security.py::get_principal` resolves a verified `Principal` via the `IdentityPort` on every route (401 on failure); `test_api_identity.py` covers persona->actor and unknown-persona 401. |
+| **C2** Object-level authz derived server-side; tenant isolation by data tags `[all]` **(load-bearing)** | PASS | The FTS5 KB adapter carries an `acl_tags` column and over-fetches then applies a fail-closed SUBSET (all-of) filter (`knowledge_base.py`); passages are tagged and the server-verified `tenant` is stamped as a `tenant:<t>` ACL principal in `review_service` (never derived from the request body), so retrieval is partitioned to the caller's tenant, not merely their groups. An entitlement gate narrows client-asserted principals to a held subset only. Covered by `test_kb_acl.py` (subset + tenant filter) and `test_entitlements.py` (cross-tenant denial, RED before the fix). |
+| **C3** Redact before everything `[agentic]` **(load-bearing)** | PASS | `review_service._prepare` step 1 is `redaction.redact(...)`, before guardrail / KB / LLM / audit; each document extract is redacted too; audit fields are `redacted_prompt` / `redacted_response`; `test_redaction_runs_before_retrieval`, `test_normal_path_audit_record_is_redacted`. |
+| **C4** Jurisdiction-driven PII packs keep the gate honest `[agentic]` **(load-bearing)** | PASS | Built on the shared `pii-kit`: `adapters/local/redaction.py` builds its rows from `pii_kit.national_patterns_for(settings.pii.jurisdictions)` + universal email/phone (SG/HK/JP/AU default via the new `PiiSettings`), and `adapters/gcp/dlp_redaction.py` builds its custom info types from the same rows' RE2-safe forms. `eval/run_eval.py` runs the REAL `LocalRegexRedactionAdapter` (no fake) and scores `pii_safety` two ways off the shared rows: the pack scan plus a pack-independent literal check over four per-market planted golden cases. Proven not falsely-green by execution: disabling redaction drops `pii_safety` to 0.6. Patterns are config-selected and shared across the redactor, the DLP adapter and the gate from one versioned source. |
+| **C5** Fail-closed defaults everywhere `[all]` **(load-bearing)** | PASS | `main()` binds via `hex_service_kit.resolve_bind_host` (loopback under the no-auth local profile unless `COMPLAINTS_ALLOW_INSECURE_DEMO=1`); Makefile `API_HOST ?= 127.0.0.1`; CORS is `cors_allowlist` (explicit `COMPLAINTS_CORS_ORIGINS`, never `*`; dev-origin fallback ONLY under local). Proven by `tests/unit/test_netdefaults.py`. |
+| **C6** Security-header baseline on every surface `[ui]` | PASS | The nonce-based console CSP and hydration proof remain; the API now adds `nosniff`, `no-referrer`, and managed-profile HSTS alongside its frame policy. |
+| **C7** S2S calls authenticated, https-only outside loopback `[all]` | PASS | `adapters/platform/_s2s.py` sources `hex_service_kit.s2s`; all six platform delegates validate their base URL at construction and attach the S2S bearer + optional signed actor (headers `X-Cr-Actor`/`-Sig`). |
+| **C8** Web login flow hardening `[ui]` | N-A | Doc6 owns no login flow: identity is the IAP-injected assertion (gcp/platform) or a seeded dev persona (local). No `api/auth.py` / `adapters/oidc/`, so the OIDC hardening surface does not exist here. |
+| **C9** Tamper-evident audit with honest limits `[all]` | PASS | `LocalAppendOnlyAuditAdapter` wraps the shared `hex_service_kit.audit.HashChainedAuditLog`: SHA-256 chain, UPDATE/DELETE triggers, JSONL export/restore, `verify_chain()`, honest-limits docstring. Proven by `tests/unit/test_audit_chain.py`. |
+| **C10** No secret values in the repo `[all]` | PASS | `config/settings.yaml` stores only `*_env` names / `${ENV:-default}` interpolations; literal-secret grep is clean. |
+| **D1** Locked, reproducible installs everywhere `[all]` **(load-bearing)** | PASS | Committed `requirements-dev.lock` + `requirements-gcp.lock` (uv pip compile); `pyproject.toml` pins `ruff==0.15.18` exactly; the Dockerfile installs from the locked files. |
+| **D2** Digest-pinned images, SHA-pinned Actions, dependabot, CI audit `[all]` **(load-bearing)** | PASS | Dockerfile `FROM python:3.12-slim@sha256:423ed6ab...` (both build and runtime stages); Actions SHA-pinned; `.github/dependabot.yml` present; CI `supply-chain` job gates `pip-audit` on both lockfiles and `npm audit --audit-level=high` on the UI. |
+| **D3** Whole gate runs offline, zero org secrets `[all]` **(load-bearing)** | PASS | `ci.yaml` (`COMPLAINTS_PROFILE: local`) runs ruff + format-check + mypy + pytest + local/onprem smoke; `eval-gate.yaml` (`COMPLAINTS_PROFILE: onprem`) runs the offline eval; no `secrets.` references. |
+| **D4** Non-root, minimal, healthchecked container `[infra]` | PASS | Multi-stage build; venv copied into the slim runtime; `USER appuser` (uid 10001); `EXPOSE 8095`; `HEALTHCHECK` on `/healthz`; `COMPLAINTS_PROFILE=gcp` set in the image; runtime stage carries no build toolchain. |
+| **D5** Deploy-time residency/sovereignty, parameterised `[infra]` | PASS | Singapore pinning, CMEK, VPC-SC and WORM controls are now CI-gated by Terraform fmt/init/validate. Live enforcement still needs a named apply and evidence. |
+| **E1** Offline eval smoke guards merge; Hrz4 owns promotion `[agentic]` **(load-bearing)** | PASS | `eval/run_eval.py` has the `--mode smoke|gate` split via the shared `agent-eval-kit` scaffold; `remote_evaluation.py` re-based on the shared `PromotionGateClient` (registered bundle `doc6-complaints-review` unchanged); gate mode refuses to run outside `COMPLAINTS_PROFILE=platform|gcp`. The pii-kit wiring is untouched. |
+| **E2** Safety metric with strictest threshold, no false green `[agentic]` | PASS | `pii_safety >= 0.99` is the strictest metric, scored + gated, and now scored off the SAME shared `pii-kit` rows the runtime redactor uses (no duplicated inline detector) PLUS a pack-independent literal check. Weakening the redactor now fails the gate: with redaction disabled `pii_safety` drops to 0.6, and `tests/unit/test_redaction_service.py` proves per-market that each identifier is masked and would leak without redaction. See C4. |
+| **E3** Fixtures and golden data obviously fictional `[all]` | PASS | `eval/datasets/golden_complaints.jsonl` uses clearly-fake ids/customers (`cmp-mis-selling-vulnerable`, `CUST-FAKE`, `example.org`); DEMO.md carries the "fictional ... do [not use on live data] without sign-off" warning; COMPLIANCE.md has a Synthetic data section. |
+| **F1** Demo is code, offline, one command, presenter-paced `[all]` | PASS | `make demo` -> `scripts/complaints_demo.py` + `scripts/render_complaints_ui.py` (offline, no cloud/API key); `make demo-server` runs the click-through server; `complaints_demo_playwright.py` present. |
+| **F2** Demo cannot rot silently `[all]` | PASS | Both halves execute. (1) Stable evidence hooks: the renderer and the demo server emit `data-panel`, `data-review-*`, `data-citation`, `data-flag-*`, `data-queue-*` attributes carrying every load-bearing figure. (2) Served stage, inside `make check`: `scripts/demo_selftest.py` starts the REAL `ThreadingHTTPServer` on an ephemeral port, walks the presenter journey over `POST /advance`, and compares each hook in the SERVED bytes against the value the RUNNING app computed. (3) Browser stage: `tests/browser/test_served_demo_ui.py` drives the same served pages through headless Chromium pinned by the `[demo]` extra (`playwright==1.62.0`), clicking the presenter's own Next button and reading figures from the LIVE DOM; `make demo-browser` runs it. RED proof: planting a stale hard-coded citation figure and stripping one `data-panel` hook failed BOTH stages, each defect independently; restoring made both green. Scope note: the browser stage self-skips when the `[demo]` extra is absent, so a day-one offline gate (D3) still installs and passes without a browser download; the served stage is unconditional. |
+| **F3** Portability claim is executable `[all]` | PASS | `scripts/portability_demo.py` gates the offline suite, port parity, cloud-free domain and fail-closed exit seam while stating live GCP limits. |
+| **G1** Declared doc authority order, kept true `[all]` | PASS | README declares `SPEC > ARCHITECTURE > COMPLIANCE > README`; no stale shipped-feature contradiction was found. |
+| **G2** Compliance mapping table + adopter-owned crosswalk `[all]` | PASS | COMPLIANCE now includes an explicitly adopter-owned complaint-handling/MAS crosswalk with applicability, owner and evidence fields. |
+| **G3** Documented, mechanised fork path `[all]` | PASS | `docs/ADOPTING.md` documents the keep-vs-rewrite boundary, the core-vs-adopter file list, the one-pass rename and the human-decision checklist; `scripts/rename_fork.py` rewrites the package / CLI / `COMPLAINTS_` prefix / resource / dist in one pass (dry-run verified: exits 0, sensible plan, writes nothing). |
+| **G4** Retired `[all]` | N-A (retired) | Retired practice. Releases are tracked by git tag and the `pyproject.toml` version. |
+| **G5** Role-specific FAQs referencing sibling systems `[all]` | PASS | `docs/faq/` has a `README.md` index plus five role FAQs (security, portability, features, adoption, compliance), each naming the owning catalog id (Hrz1-Hrz5, Hrz7, Rsk1, Rsk3, Rsk6, Rgc9) for adjacent concerns rather than duplicating them. |
+| **G6** Contribution docs cover full extension touch list `[all]` | PASS | CONTRIBUTING lists adapter and sub-service touch points and names the enforcing parity test. |
+| **G7** Markdown discipline: minimise em-dashes, validate mermaid `[all]` | PASS | README, SPEC, ARCHITECTURE, COMPLIANCE, CONTRIBUTING, DEMO and `docs/*.md` are all at 0 em-dashes. |
+
+**Verdict counts:** 39 PASS, 0 PARTIAL, 0 FAIL, 2 N-A.
+**Load-bearing subset (A1-A6, C1-C5, D1-D3, E1 = 15 checks): 15 PASS, 0 PARTIAL, 0 FAIL.**
+No load-bearing check FAILs and none remains PARTIAL.
+
+## Gaps carried to systems/
+
+The Doc6 row's `Capability gaps` in
+the maintainer's per-system register
+should track these.
+
+**Load-bearing: no open gaps remain.**
+
+- **C2 tenant isolation.** The FTS5 KB adapter carries an `acl_tags`
+  column, a fail-closed subset filter, a server-verified `tenant:<t>` partition and an
+  entitlement gate; `test_kb_acl.py` + `test_entitlements.py` prove it (cross-tenant denial RED
+  before).
+- **C4 jurisdiction PII packs.** Built on the shared `pii-kit`;
+  the redactor, DLP info types and the two-part eval scorer read one config-selected source,
+  proven not-falsely-green by execution.
+- **D1 locked installs.** Committed `requirements-{dev,gcp}.lock`;
+  `ruff==0.15.18` exact pin; Dockerfile installs from the locks.
+- **D2 supply-chain pinning/audit.** Digest-pinned base image, SHA-pinned
+  Actions, `dependabot.yml`, and a CI `supply-chain` job (`pip-audit` + `npm audit`).
+- **C5 fail-closed network defaults.** `hex_service_kit.resolve_bind_host`
+  (loopback under no-auth local) + `cors_allowlist`; `test_netdefaults.py`.
+- **E1 smoke-vs-promotion split.** `--mode smoke|gate` split via the shared
+  `agent-eval-kit`; gate mode refuses outside `platform|gcp`.
+- **A6 drift guard.** Set-equality assertion between
+  `PORT_PROTOCOLS` and the settings bindings (`test_port_protocols_matches_settings_adapters`,
+  fails on both drift directions) plus `tests/contract/test_behavioral_parity.py`.
+
+Quality-of-adoption gaps (not load-bearing), all clear: **B5** (StrEnum
+vocabularies via the commons), **C7** (`adapters/platform/_s2s.py`),
+**C9** (hash-chained audit via `hex_service_kit.audit`), **E2** (shared `pii-kit`
+scorer), and **G3 / G5** (adopter docs and role FAQs; **G4** is a retired practice).
+
+- **A7.** The kernel is not a façade over mixed models: the neutral types
+  live in `domain/kernel.py`, `domain/models.py` imports and re-exports them, and a fresh-interpreter
+  import probe proves the arrow points one way. RED before the split: 17 failed / 25 passed.
+- **F2.** Stable `data-*` evidence hooks, a served self-test that drives the real
+  HTTP server inside `make check`, and a pinned headless-browser walkthrough (`make demo-browser`,
+  `playwright==1.62.0` in the `[demo]` extra) over the same served pages. Both stages are proven
+  able to go RED against a planted stale figure and a stripped panel hook.
+- **Still external.** Named GCP plan/apply, hosted identity and deployed-environment evidence remain
+  external deployment evidence and must not be inferred from offline gates. The offline gate proves
+  the demo and the domain split; it proves nothing about a live project.

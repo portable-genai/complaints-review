@@ -1,0 +1,40 @@
+# Groundedness rubric : A4 AI Quality & Model-Risk gate (P-08).
+#
+# "Groundedness" measures whether the conduct decision (categorisation, conduct flags) and
+# the draft response are supported by the policy / regulatory passages that were actually
+# retrieved and cited : i.e. the review does not assert conclusions that float free of a
+# source. For a conduct artifact this is non-negotiable: a reviewer must be able to trace
+# each conclusion and each commitment in a draft back to a primary policy or regulation.
+#
+# Production scorer: the Gen AI evaluation service on the Gemini Enterprise Agent Platform,
+# routed through complaints_review.adapters.gcp.genai_eval:GenAiEvalAdapter.
+# Offline/CI scorer: the deterministic heuristic in eval/run_eval.py (the categorisation
+# and the draft must each carry at least one cited source).
+
+metric: groundedness
+description: >
+  Fraction of reviews whose categorisation and draft response are backed by a cited
+  policy / regulatory source. A review that draws a conclusion with no citation scores 0.
+threshold: 0.80          # report fails if score < 0.80
+direction: maximize
+applies_to:
+  - Categorization.citations
+  - DraftResponse.citations
+  - ConductFlag.citations
+
+criteria:
+  - id: categorisation_cited
+    description: The categorisation carries at least one regulator/policy-grade citation.
+    weight: 0.5
+  - id: draft_cited
+    description: The draft response grounds its commitments in cited policy.
+    weight: 0.5
+
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
+
+notes: >
+  The offline heuristic is intentionally strict and conservative: it credits a review only
+  when both its categorisation and its draft carry citations, so passing the offline gate
+  is a lower bound on the LLM-judge score the production evaluator would assign.

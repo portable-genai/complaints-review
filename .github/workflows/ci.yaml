@@ -1,0 +1,144 @@
+name: CI
+
+# Lint + type-check + tests on the LOCAL profile (a WORKING offline stack), so CI needs
+# NO Google Cloud credentials and NO google-cloud-* packages. The local adapters drive
+# the suite end to end; integration tests are deselected.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  COMPLAINTS_PROFILE: local
+
+jobs:
+  lint-type-test:
+    name: ruff + mypy + pytest (local)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install (dev only, no GCP SDK)
+        # Proves the domain + local profile install and run with no google-cloud-* deps.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.lock && pip install -e . --no-deps
+
+      - name: Ruff (lint)
+        run: ruff check src tests eval
+
+      - name: Ruff (format check)
+        run: ruff format --check src tests eval
+
+      - name: Mypy (type-check)
+        run: mypy src
+
+      - name: Pytest (unit + contract, integration deselected)
+        run: pytest -m 'not integration' -q
+
+      - name: Demo anti-rot and portability proofs
+        run: |
+          PYTHONPATH=src:tests:scripts python scripts/demo_selftest.py
+          PYTHONPATH=src python scripts/portability_demo.py
+
+      - name: End-to-end local smoke (real artifact, offline)
+        # The local profile runs the whole review pipeline offline and returns a real
+        # cited artifact (not NotImplementedError). Proves the laptop stack works.
+        run: |
+          complaints-review review CMP-CI-001 \
+            --narrative "The branch sold me a structured investment product I did not understand." \
+            --product "structured investment product" --channel branch --received 2026-06-01
+
+      - name: On-prem fail-fast smoke (exit 2)
+        # The on-prem placeholders fail fast: the CLI exits 2 with the migration message.
+        # Capture the code via && / || so set -e does not abort on the intentional exit.
+        run: |
+          COMPLAINTS_PROFILE=onprem complaints-review review CMP-CI-002 \
+            --narrative "Mis-sold product." --product loan --channel email && rc=0 || rc=$?
+          echo "onprem exit=$rc"
+          test "$rc" -eq 2
+
+  supply-chain:
+    name: dependency audit (pip-audit + npm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      # Audit the committed lockfiles so the result matches exactly what CI and the image
+      # install. --no-deps: the locks are fully compiled, so audit those exact versions.
+      - name: pip-audit (dev + gcp lockfiles)
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          pip-audit -r requirements-dev.lock --disable-pip --no-deps
+          pip-audit -r requirements-gcp.lock --disable-pip --no-deps
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+      # A hard gate, matching the Python side where pip-audit fails the job rather than
+      # warning. The advisories the old temporary exception carried are fixed for real:
+      # postcss is on 8.5.26 and nanoid on 3.3.18, and the report is clean.
+      - name: npm audit (high severity fails the build)
+        working-directory: ui
+        run: npm audit --audit-level=high
+
+  ui-build:
+    name: Next.js console builds and hydrates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install + build the thin console
+        # npm audit alone cannot catch a UI-breaking dependency bump; only a real build can.
+        working-directory: ui
+        run: |
+          npm ci
+          npm run lint
+          npm test
+          NEXT_TELEMETRY_DISABLED=1 npm run build
+
+      - name: Prove the built console can hydrate
+        # A build proves the page compiles, not that a browser can run it. This starts the
+        # BUILT server and asserts every script tag in the served document carries the CSP
+        # nonce. The header is byte-identical in the working case and in the broken one, so
+        # only the markup can tell them apart.
+        working-directory: ui
+        run: npm run assert-hydratable
+
+  terraform:
+    name: terraform fmt + validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: "1.9.8"
+      - run: terraform -chdir=infra/terraform fmt -check -recursive
+      - run: terraform -chdir=infra/terraform init -backend=false
+      - run: terraform -chdir=infra/terraform validate
