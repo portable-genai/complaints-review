@@ -14,10 +14,10 @@ asks before writing (unless ``--yes``), and by default leaves docs prose alone (
     python scripts/rename_fork.py --package acme_conduct_agent --cli acme-conduct \
         --env-prefix ACME --resource acme-conduct-review --yes
 
-Note: in this repo the CLI entry point and the resource-id stem are the SAME string
-(``complaints-review``). If you pass different ``--cli`` and ``--resource`` values, the
-resource replacement runs first and wins for that shared literal; pass the same value for
-both if you want them to stay aligned (the common case).
+Note: in this repo the CLI entry point, the resource-id stem and the distribution name
+are the SAME string (``complaints-review``). The distribution and the console script are
+rewritten through their own declarations, so ``--dist``, ``--cli`` and ``--resource`` each
+mean what they say and may differ; passing one value for all three is still the common case.
 
 After running: recreate the venv and ``pip install -e ".[dev]"`` (the distribution name
 changed), then run the gate. See docs/ADOPTING.md for the full checklist (fixtures, IdP
@@ -89,10 +89,16 @@ def _iter_files(include_docs: bool):
 
 def _replacements(args: argparse.Namespace) -> list[tuple[str, str]]:
     env_prefix = args.env_prefix.rstrip("_").upper() + "_"
-    # Order matters: the distribution name contains the resource stem, so replace the
-    # longer, more specific strings first.
+    # Three constants are the same token here, so replacing any of them bare consumes every
+    # occurrence and leaves the others doing nothing. The distribution and the console script
+    # each have a declaration to anchor on; anchoring them is what keeps --dist, --cli and
+    # --resource independently meaningful.
     return [
-        (_OLD_DIST, args.dist or args.resource),
+        (f'name = "{_OLD_DIST}"', f'name = "{args.dist or args.resource}"'),
+        (
+            f'{_OLD_CLI} = "{_OLD_PACKAGE}.cli.main:app"',
+            f'{args.cli} = "{args.package}.cli.main:app"',
+        ),
         (_OLD_PACKAGE, args.package),
         (_OLD_RESOURCE, args.resource),
         (_OLD_CLI, args.cli),
