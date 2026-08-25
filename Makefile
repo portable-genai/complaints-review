@@ -25,7 +25,7 @@ DEMO_SCRIPTS := scripts/demo_selftest.py scripts/portability_demo.py scripts/ren
 export COMPLAINTS_PROFILE := $(PROFILE)
 
 .DEFAULT_GOAL := help
-.PHONY: help install install-demo install-gcp fmt lint test eval check ui-install ui-check run-local run-api run-ui demo demo-server demo-selftest demo-browser tf-plan clean
+.PHONY: help install install-demo install-gcp lock fmt lint test eval check ui-install ui-check run-local run-api run-ui demo demo-server demo-selftest demo-browser tf-plan clean
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -40,6 +40,9 @@ install-demo: ## Install the pinned headless-browser extra, then fetch its brows
 
 install-gcp: ## Install with the managed-stack extra (google-adk, genai, documentai, ...).
 	$(PIP) install -e ".[gcp,dev]"
+
+lock: ## Recompile every lockfile from pyproject.toml and restore the tag = commit headers.
+	$(PYTHON) scripts/lock.py
 
 fmt: ## Auto-format and auto-fix lint issues.
 	ruff format $(SRC) $(TESTS) eval
@@ -65,7 +68,7 @@ demo-selftest: ## Prove the real presenter states and evidence hooks cannot rot 
 	PYTHONPATH=src:tests:scripts $(PYTHON) scripts/demo_selftest.py
 
 demo-browser: ## Drive the SERVED presenter demo through a real headless browser ([demo] extra).
-	COMPLAINTS_PROFILE=local pytest tests/browser -q
+	COMPLAINTS_PROFILE=local pytest tests/browser -q -rs
 
 ui-install: ## Install the console's pinned dependencies from the committed lockfile.
 	npm ci --prefix $(UI_DIR)
