@@ -43,7 +43,7 @@ from complaints_review.domain.models import EvalReport
 _BASE = "https://hrz-quality.test"
 _DATASET_PATH = "eval/datasets/golden_complaints.jsonl"
 _DATASET_ID = "golden_complaints"  # basename without the .jsonl suffix
-_MODEL = "gemini-3.5-flash"  # the pinned reasoning model
+_MODEL = "gemini-3.7-flash"  # the pinned reasoning model
 
 # The four A4 metric names the fixed adapter must NEVER put on the wire (selection is by
 # bundle now; A4 422s on unregistered metric names).
