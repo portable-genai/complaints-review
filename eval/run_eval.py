@@ -301,7 +301,7 @@ class FakeLLMAdapter:
 
     def __init__(self, by_narrative: dict[str, GoldenExample]) -> None:
         self._by_narrative = by_narrative
-        self.model = "gemini-3.5-flash"
+        self.model = "gemini-3.7-flash"
 
     def generate(self, request: LlmRequest) -> LlmResponse:
         user = _last_user_text(request)
