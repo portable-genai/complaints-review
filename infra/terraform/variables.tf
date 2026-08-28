@@ -103,6 +103,54 @@ variable "enable_vpc_sc" {
   default     = true
 }
 
+variable "enable_org_policies" {
+  description = <<-EOT
+    Create the project-level Org Policy constraints (gcp.resourceLocations and the hardening
+    set). Requires org-level permission the deploying principal may not hold, which is why it
+    is a toggle rather than unconditional: a deploy without it still gets every per-resource
+    location pin, and does NOT get the control that refuses an unpinned one. Leave it true
+    wherever the residency claim is load-bearing.
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "resource_location_values" {
+  description = <<-EOT
+    Value groups for the gcp.resourceLocations Org Policy. Empty (the default) derives the
+    strictest form from var.allowed_regions: those regions and their sub-locations, nothing
+    else.
+
+    Widen it ONLY where a service this stack genuinely needs has no presence at single-region
+    granularity, and treat the width as the residency claim rather than as plumbing. Two
+    services here force the question:
+
+      * Agent Search serves `global`, `us` and `eu` and NO Cloud region at all.
+      * Document AI serves the deploy region only once Google grants single-region access,
+        and routes to the `us` multi-region until then (var.docai_location).
+
+    Move to the smallest value group that still describes ONE JURISDICTION -- `in:us-locations`
+    keeps every resource inside the United States -- and state the residency claim at that
+    granularity rather than pretending it is still single-region. NEVER list an individual
+    foreign region to unblock one service: that turns a jurisdiction boundary into a list of
+    exceptions nobody can reason about.
+
+    NOT YET VERIFIED BY EXECUTION here: whether a `global` Agent Search data store is subject
+    to this constraint at all, or is exempt as a global resource. Confirm at first apply and
+    record the answer rather than guessing; the failure mode if it IS subject is an apply
+    error naming discoveryengine, which is the good kind of failure. Doc1 already has the
+    Document AI half of this answer by execution: an `in:<region>-locations` policy BLOCKED
+    processor creation at `us` with "violates constraint constraints/gcp.resourceLocations".
+  EOT
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for v in var.resource_location_values : startswith(v, "in:") || startswith(v, "is:")])
+    error_message = "Each value must be an Org Policy location value group (in:...) or a literal location (is:...)."
+  }
+}
+
 variable "docai_location" {
   description = <<-EOT
     Where the Document AI processor is CREATED. Deliberately NOT var.region.
