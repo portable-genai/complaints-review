@@ -33,7 +33,7 @@ flowchart TB
         API["FastAPI service<br/>api/"]
         CLI["Typer CLI<br/>cli/"]
         UI["React / Next.js UI<br/>ui/"]
-        A2A["A2A / MCP server<br/>agent/"]
+        A2A["ADK agent + A2A card<br/>agent/"]
     end
 
     subgraph core["Domain core: pure Python, no GCP imports"]
