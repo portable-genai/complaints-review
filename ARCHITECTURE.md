@@ -20,7 +20,7 @@ flowchart LR
     local["local/<br/>working offline stack (SQLite FTS5, deterministic LLM, no SDK)"]
     platform["platform/<br/>thin HTTP clients to the shared Hrz1 to Hrz5 services"]
     onprem["onprem/<br/>NotImplementedError placeholder stubs (P-02 / P-12)"]
-    agent["agent/<br/>ADK agent + A2A / MCP server wiring"]
+    agent["agent/<br/>ADK agent + A2A card (no MCP server: see below)"]
     api["api/<br/>FastAPI service"]
     cli["cli/<br/>Typer CLI (entry point: complaints-review)"]
     srcconfig["config.py<br/>Settings + Container (DI for the hexagon)"]
@@ -64,6 +64,20 @@ flowchart LR
 | `EvaluationGatePort` | Promotion eval (Hrz4) | Gen AI evals | offline `run_eval.py` | Hrz4 `/v1/evaluations` | stub |
 | `AgentRegistryPort` | A2A registry (Hrz3) | in-process | in-process (Firestore emulator opt-in) | Hrz3 `/v1/agents` | stub |
 | `ToolCatalogPort` | Governed MCP tools (Hrz3) | in-process | in-process | n/a | stub |
+
+**The tool catalog is DECLARED and deliberately not SERVED, and that is a decision rather than
+a gap.** Fourteen trees in the fleet serve their catalog over MCP 2026-07-28 on stdio; this one
+does not, because every tool here takes a `file_id` and resolving one means reading a complaint
+the caller named. `entitlements.complaint_scope` decides that server-side from the VERIFIED
+principal, and MCP stdio verifies no end user at all. The trees that do serve rely on entitlement
+FILTERING, which degrades safely: an empty principal sees untagged public data and nothing else.
+This tree's authorization is an object-level gate that RAISES, so the same empty principal is
+refused every complaint. Serving it would bind cleanly and refuse every call, which is a dead
+surface wearing a green tick, and supplying a principal nobody verified would forge the
+entitlement the gate exists to check.
+
+`tests/unit/test_tool_catalog_is_declared_and_deliberately_unserved.py` executes that reason
+rather than asserting it, and refuses an `mcp/` package appearing here until it has an answer.
 
 The `local` adapters are SDK-free, deterministic and seedable: they run the whole pipeline
 offline (no Google Cloud, no API key, no emulators by default) and drive the test suite, so
