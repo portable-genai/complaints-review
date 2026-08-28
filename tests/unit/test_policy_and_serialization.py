@@ -152,7 +152,10 @@ def test_settings_load_parses_yaml():
     assert settings.region == "asia-southeast1"
     assert settings.models.reasoning == "gemini-3.5-flash"
     assert settings.models.triage == "gemini-3.5-flash"
-    assert settings.document_ai.location == "asia-southeast1"
+    # NOT the deploy region: Document AI reaches asia-southeast1 only once Google grants
+    # single-region access, so extraction routes to the `us` multi-region until then. One
+    # selector per fact -- the region selector must not decide this one silently.
+    assert settings.document_ai.location == "us"
     assert settings.policy.deadline_days == 21
     assert "vulnerable_customer" in settings.policy.escalating_flags
     assert set(PORT_PROTOCOLS) <= set(settings.adapters)

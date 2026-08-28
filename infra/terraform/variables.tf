@@ -102,3 +102,37 @@ variable "enable_vpc_sc" {
   type        = bool
   default     = true
 }
+
+variable "docai_location" {
+  description = <<-EOT
+    Where the Document AI processor is CREATED. Deliberately NOT var.region.
+
+    Document AI does not serve every Cloud region, and creating a processor in one it does not
+    serve 404s at apply. It DOES serve asia-southeast1 -- and serves no us-central1 endpoint at
+    all -- but Singapore is "limited support": a subset of processors, several in Preview, and
+    access is gated behind Google's Document AI Single Region Request Form. Until that request
+    is granted this routes to the `us` MULTI-REGION, which is a stated residency deviation:
+    document bytes are extracted in the United States while the rest of the stack stays in
+    region. Set this to asia-southeast1 the day access lands.
+
+    Keep it equal to the runtime's COMPLAINTS_DOCAI_LOCATION, which selects the same location for
+    the adapter. If the two disagree, Terraform creates the processor in one location and the
+    adapter looks for it in another, and the failure surfaces as a confusing 404 at request
+    time rather than at apply.
+
+    `us` and `eu` are multi-regions, not `global`: each names ONE jurisdiction. Never widen
+    this to a location the service does not serve just to make an apply succeed. Whichever is
+    chosen, gcp.resourceLocations must be wide enough to permit it, and the
+    residency claim must be stated at that width rather than at var.region's.
+  EOT
+  type        = string
+  default     = "us"
+
+  validation {
+    # Mirrors the runtime rule: the deploy region, or a NAMED multi-region. `global` is refused
+    # by name because it names no jurisdiction, and so is any other single region -- an
+    # out-of-region single region would be a silent jurisdiction change dressed as a fix.
+    condition     = contains(["us", "eu"], var.docai_location) || var.docai_location == var.region
+    error_message = "docai_location must be the deploy region (var.region) or a named Document AI multi-region (us, eu). `global` names no jurisdiction and is refused."
+  }
+}
