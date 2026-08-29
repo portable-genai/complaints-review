@@ -31,7 +31,7 @@ reason.
 | R4 | Hrz3 registry | Doc6 publishes an A2A AgentCard (`/.well-known/agent-card.json`) and can register with Hrz3 (`AgentRegistryPort`). |
 | R5 | Hrz4 eval gate at promotion | The Hrz4 eval gate (offline + `GenAiEvalAdapter`) gates promotion to Agent Runtime. |
 | R6 | Rsk3 at intake | A complaint file is taken in at intake and screened per the catalog's intake control (Rsk3) before review; Doc6 consumes the screened file. |
-| R8 | Route `requires_human_review` to Hrz7 | **Applies.** Every escalated complaint review is submitted to the Hrz7 Human-Review & Maker-Checker Console via the shared `review-kit` client (redact-before-wire); `local` enqueues to a transactional outbox so the routing path runs offline, `gcp`/`platform` submit over S2S to Hrz7's service intake (`HRZ_HUMAN_REVIEW_URL`). `ports/review_router.py`, `adapters/{local,platform,onprem}/review_router.py`, `adapters/_review_payload.py`. |
+| R8 | Route `requires_human_review` to Hrz7 | **Applies.** Every escalated complaint review is submitted to the Hrz7 Human-Review & Maker-Checker Console via the shared `review-kit` client (redact-before-wire); `local` enqueues to a transactional outbox so the routing path runs offline, `gcp`/`platform` submit over S2S to Hrz7's service intake (`HUMAN_REVIEW_URL`). `ports/review_router.py`, `adapters/{local,platform,onprem}/review_router.py`, `adapters/_review_payload.py`. |
 
 ## Synthetic data
 

@@ -7,7 +7,7 @@ contract), so policy and regulatory passages used to categorise a complaint and 
 draft response are retrieved via A2 governed search (rule R3) rather than B6 building its
 own backend.
 
-The base URL is read from ``HRZ_KB_URL`` with a localhost default.
+The base URL is read from ``KNOWLEDGE_BASE_URL`` with a localhost default.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ class RemoteKnowledgeBaseAdapter:
     def __init__(self, settings: object) -> None:
         self._settings = settings
         self._base_url = _s2s.validate_base_url(
-            setting_or_default("HRZ_KB_URL", _DEFAULT_URL), service="knowledge base"
+            setting_or_default("KNOWLEDGE_BASE_URL", _DEFAULT_URL), service="knowledge base"
         )
 
     def search(self, query: RetrievalQuery) -> list[RetrievedPassage]:

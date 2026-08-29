@@ -41,7 +41,7 @@ lower it and never auto-execute. Proven by `test_review_always_required` and
 Because every complaint review requires a human, the escalation is **routed**, not left as a
 per-repo boolean. The shared `review-kit` client (redact-before-wire) submits the review
 over S2S to the sibling **Hrz7** Human-Review and Maker-Checker Console under `gcp`/`platform`
-(`HRZ_HUMAN_REVIEW_URL`); the `local` profile enqueues to an in-memory outbox so the routing
+(`HUMAN_REVIEW_URL`); the `local` profile enqueues to an in-memory outbox so the routing
 path runs offline; and `onprem` is the sovereign placeholder
 (`ports/review_router.py`, `adapters/{local,platform,onprem}/review_router.py`). Proven by
 `tests/unit/test_review_routing.py`.
