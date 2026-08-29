@@ -117,7 +117,7 @@ there is no build-time coupling.
 ### Where are secrets? Are any committed?
 
 No secret values are in the repo. `config/settings.yaml` stores only the **names** of env
-vars holding secrets (e.g. `${COMPLAINTS_KMS_KEY:-}`, `HRZ_S2S_TOKEN`, DLP template ids);
+vars holding secrets (e.g. `${COMPLAINTS_KMS_KEY:-}`, `S2S_TOKEN`, DLP template ids);
 values are read at construction time and never logged. Every fixture, customer reference and
 NRIC / FIN id is synthetic and obviously fictional.
 

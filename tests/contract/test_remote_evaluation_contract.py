@@ -129,7 +129,7 @@ def _gate_body(*, passed: bool, rows: list[dict], attested: bool = True) -> dict
 
 
 def _adapter(monkeypatch: pytest.MonkeyPatch) -> RemoteEvaluationAdapter:
-    monkeypatch.setenv("HRZ_QUALITY_URL", _BASE)
+    monkeypatch.setenv("QUALITY_GATE_URL", _BASE)
     settings = Settings(profile="platform", models=ModelSettings(reasoning=_MODEL))
     return RemoteEvaluationAdapter(settings)
 

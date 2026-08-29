@@ -3,7 +3,7 @@
 B6 does **not** build its own retrieval backend: policy and regulatory guidance used to
 categorise a complaint and ground the draft response are retrieved from the shared
 **A2 Enterprise Knowledge Base** (rule R3, governed RAG). The ``platform`` adapter is a
-thin HTTP client to A2's ``/v1/search`` (env ``HRZ_KB_URL``); the on-prem placeholder
+thin HTTP client to A2's ``/v1/search`` (env ``KNOWLEDGE_BASE_URL``); the on-prem placeholder
 stub raises, and a direct GCP adapter (Agent Search) is available for standalone runs.
 """
 

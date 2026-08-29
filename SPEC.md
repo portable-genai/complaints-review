@@ -110,17 +110,17 @@ A guardrail block or an empty corpus is returned as a 200 blocked envelope
 
 ### Services Doc6 consumes
 
-- Hrz1 guardrail (`HRZ_GUARDRAIL_URL`): `POST /v1/guardrail/screen`, `POST /v1/redact`.
-- Hrz2 enterprise KB (`HRZ_KB_URL`): `POST /v1/search`.
-- Hrz3 registry (`HRZ_REGISTRY_URL`): `POST /v1/agents`, `GET /v1/agents/{name}`,
+- Hrz1 guardrail (`GUARDRAIL_GATEWAY_URL`): `POST /v1/guardrail/screen`, `POST /v1/redact`.
+- Hrz2 enterprise KB (`KNOWLEDGE_BASE_URL`): `POST /v1/search`.
+- Hrz3 registry (`AGENT_REGISTRY_URL`): `POST /v1/agents`, `GET /v1/agents/{name}`,
   `GET /v1/agents`.
-- Hrz4 AI quality (`HRZ_QUALITY_URL`): `POST /v1/evaluations` and `POST /v1/gate`, each with a
+- Hrz4 AI quality (`QUALITY_GATE_URL`): `POST /v1/evaluations` and `POST /v1/gate`, each with a
   structured body `{target: {model, prompt_version, dataset_id, system}, dataset_id, bundle:
   "doc6-complaints-review"}`. `/v1/evaluations` returns `{results[]}` (parsed from `results`, not
   `metrics`); `/v1/gate` returns `{passed}`. Metric selection is by the registered bundle name
   `doc6-complaints-review` (no bare metric names); the top-level `dataset_id` must equal
   `target.dataset_id`, and Hrz4 returns 422 on divergence or on unregistered metric names.
-- Hrz5 observability (`HRZ_OBSERVABILITY_URL`): `POST /v1/audit`.
+- Hrz5 observability (`OBSERVABILITY_URL`): `POST /v1/audit`.
 
 ## 7. Eval gate (Hrz4 / P-08)
 

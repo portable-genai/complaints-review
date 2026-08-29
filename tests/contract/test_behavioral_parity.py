@@ -54,8 +54,8 @@ CONFIG_PATH = "config/settings.yaml"
 
 # The platform clients' localhost defaults (SPEC contract): mocked, never actually served.
 # These MUST match the env-var defaults hard-coded in the remote_* adapters.
-HRZ_GUARDRAIL = "http://localhost:8080"  # remote_redaction / remote_guardrail (HRZ_GUARDRAIL_URL)
-HRZ_KB = "http://localhost:8082"  # remote_knowledge_base (HRZ_KB_URL)
+GUARDRAIL_GATEWAY = "http://localhost:8080"  # remote_redaction / remote_guardrail (GUARDRAIL_GATEWAY_URL)
+KNOWLEDGE_BASE = "http://localhost:8082"  # remote_knowledge_base (KNOWLEDGE_BASE_URL)
 
 # Fictional complaint PII: a Singapore NRIC and an email the redactor must mask.
 PII_TEXT = (
@@ -87,7 +87,7 @@ def test_redaction_parity_local_equals_platform():
         # The A1 gateway is DLP-backed; serve its documented /v1/redact answer for the same
         # request. Echoing the local result proves the httpx client parses the A1 contract
         # back into the IDENTICAL domain object the offline regex adapter produced.
-        respx.post(f"{HRZ_GUARDRAIL}/v1/redact").respond(200, json=to_jsonable(local_result))
+        respx.post(f"{GUARDRAIL_GATEWAY}/v1/redact").respond(200, json=to_jsonable(local_result))
         platform_result = _adapter("redaction", "platform").redact(PII_TEXT)
 
     assert platform_result == local_result, "platform redaction diverged from local at the boundary"
@@ -121,7 +121,7 @@ def test_knowledge_base_parity_local_equals_platform_and_is_deterministic():
 
     with respx.mock:
         # A2 serves the same passages for the same query (SPEC /v1/search shape).
-        respx.post(f"{HRZ_KB}/v1/search").respond(
+        respx.post(f"{KNOWLEDGE_BASE}/v1/search").respond(
             200, json={"passages": [to_jsonable(p) for p in local_passages]}
         )
         platform_passages = _adapter("knowledge_base", "platform").search(query)
