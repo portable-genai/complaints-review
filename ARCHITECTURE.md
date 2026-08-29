@@ -67,9 +67,10 @@ flowchart LR
 
 **The tool catalog is DECLARED and deliberately not SERVED, and that is a decision rather than
 a gap.** Fourteen trees in the fleet serve their catalog over MCP 2026-07-28 on stdio; this one
-does not, because every tool here takes a `file_id` and resolving one means reading a complaint
-the caller named. `entitlements.complaint_scope` decides that server-side from the VERIFIED
-principal, and MCP stdio verifies no end user at all. The trees that do serve rely on entitlement
+does not, because every tool here NAMES the complaint it acts on with a required `file_id`, and
+acting on a named complaint is gated on entitlement to it. `entitlements.complaint_scope`
+decides that server-side from the VERIFIED principal, and MCP stdio verifies no end user at
+all. The trees that do serve rely on entitlement
 FILTERING, which degrades safely: an empty principal sees untagged public data and nothing else.
 This tree's authorization is an object-level gate that RAISES, so the same empty principal is
 refused every complaint. Serving it would bind cleanly and refuse every call, which is a dead
