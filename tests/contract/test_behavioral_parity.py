@@ -54,7 +54,7 @@ CONFIG_PATH = "config/settings.yaml"
 
 # The platform clients' localhost defaults (SPEC contract): mocked, never actually served.
 # These MUST match the env-var defaults hard-coded in the remote_* adapters.
-GUARDRAIL_GATEWAY = "http://localhost:8080"  # remote_redaction / remote_guardrail (GUARDRAIL_GATEWAY_URL)
+GUARDRAIL_GATEWAY = "http://localhost:8080"  # remote_redaction / remote_guardrail
 KNOWLEDGE_BASE = "http://localhost:8082"  # remote_knowledge_base (KNOWLEDGE_BASE_URL)
 
 # Fictional complaint PII: a Singapore NRIC and an email the redactor must mask.
