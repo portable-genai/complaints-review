@@ -12,9 +12,9 @@ import "./globals.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "B6 Complaints & Conduct File Review",
+  title: "Complaints & Conduct File Review",
   description:
-    "Demo console for the B6 service: a cited summary, categorisation with conduct flags, and a draft regulator/customer response from a complaint file.",
+    "Demo console for the service: a cited summary, categorisation with conduct flags, and a draft regulator/customer response from a complaint file.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -31,7 +31,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <header className="border-b border-ink-200 bg-white">
               <div className="mx-auto max-w-4xl px-6 py-4">
                 <h1 className="text-lg font-semibold text-ink-900">
-                  B6 · Complaints &amp; Conduct File Review
+                  Complaints &amp; Conduct File Review
                 </h1>
                 <p className="text-sm text-ink-500">
                   Cited reviews · draft responses are never auto-sent · region
