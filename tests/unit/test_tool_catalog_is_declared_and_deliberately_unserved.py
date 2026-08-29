@@ -5,8 +5,9 @@ one does not, and the reason has to be executable rather than asserted, because 
 to" is exactly the kind of claim that rots into "nobody got round to it".
 
 **The reason is identity, and it is not a gap in the plumbing.** Every tool in this catalog
-takes a ``file_id``. Resolving one means reading a complaint the caller named, and
-``entitlements.complaint_scope`` decides that server-side from the VERIFIED principal: a caller
+NAMES the complaint it acts on, with a required ``file_id``, and acting on a named complaint is
+gated on entitlement to it. ``entitlements.complaint_scope`` decides that server-side from the
+VERIFIED principal: a caller
 holds either an explicit ``complaint:<id>`` grant or a complaint-access role, and holds neither
 by default. MCP stdio verifies no end user at all. The fleet's serving trees supply an EMPTY
 principal there and rely on entitlement FILTERING, which degrades safely: an empty principal
@@ -48,19 +49,22 @@ def catalog() -> McpToolCatalogAdapter:
 
 
 def test_every_declared_tool_is_keyed_on_an_object_id(catalog: McpToolCatalogAdapter) -> None:
-    """The premise of everything below: these tools name a complaint rather than carrying one.
+    """The premise of everything below: these tools name the complaint they act on.
 
-    A tool that took the complaint file inline would need no lookup and no object-level check,
-    which is what makes the trees that DO serve able to serve. Asserted rather than assumed, so
-    that adding an inline tool here makes this file's reasoning stop applying loudly.
+    The tools carry the complaint text too, because nothing here can resolve an id against a
+    store (see ``test_mcp_catalog_is_performable.py``). The ID is what matters HERE: it is the
+    object ``entitlements.complaint_scope`` decides on, and a tool that named no complaint would
+    have no object to gate. Asserted rather than assumed, so that dropping the id makes this
+    file's reasoning stop applying loudly.
     """
     declared = catalog.list_tools()
 
     assert declared, "an empty catalog would make every assertion in this file vacuous"
     for spec in declared:
-        assert "file_id" in spec.input_schema["properties"], (
-            f"{spec.name} no longer takes a file_id; if it now carries the complaint inline, "
-            "the identity argument in this module's docstring needs revisiting"
+        assert "file_id" in spec.input_schema["required"], (
+            f"{spec.name} no longer requires a file_id, so it names no object for the "
+            "entitlement gate to decide on, and the identity argument in this module's "
+            "docstring needs revisiting"
         )
 
 

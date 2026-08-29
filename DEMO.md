@@ -114,8 +114,11 @@ Or drive the **real console** against the **real API** offline (two terminals):
 
 ```bash
 make run-api PROFILE=local      # FastAPI on :8095, profile=local
-make run-ui                     # Next.js console on http://localhost:3000
+cd ui && npm install && npm run build && npm run start   # console on http://localhost:3000
 ```
+
+Every demo runs against a production build, never a development server. `make run-ui` is the
+developer loop with hot reload, and it is not what a presenter shows.
 
 Then in the console paste a narrative (e.g. *"I am a recently bereaved and vulnerable
 customer. The branch sold me a structured investment product I did not understand."*),
@@ -219,7 +222,7 @@ curl -s localhost:8095/healthz
 Or the browser console (talks to the API on :8095) - see [`ui/README.md`](ui/README.md):
 
 ```bash
-make run-ui           # http://localhost:3000
+cd ui && npm install && npm run build && npm run start   # http://localhost:3000
 ```
 
 **What to highlight:** every claim carries a source-and-page **citation**; customer PII is
@@ -259,7 +262,7 @@ in `asia-southeast1` with CMEK ([README "Architecture at a glance"](README.md#ar
 | Browser console shows a network error | The API must be running (`make run-api PROFILE=local`) and CORS allows `http://localhost:3000` by default. |
 | GCP deploy / region / VPC-SC errors | See [`docs/runbook.md` "Common issues"](docs/runbook.md#common-issues). |
 
-**Stop / clean up:** Ctrl-C the demo server, `make run-api` and `make run-ui`. The demo
+**Stop / clean up:** Ctrl-C the demo server, `make run-api` and the console. The demo
 scripts use ephemeral in-memory stores, so nothing persists. For GCP, scale the deployment
 to zero or remove the app SA's model-access role - the audit trail remains intact (see
 [`docs/runbook.md`](docs/runbook.md)). `make clean` removes local caches/artefacts; the
