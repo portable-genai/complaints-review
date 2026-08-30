@@ -126,6 +126,7 @@ google-api-core==2.34.0
     #   google-cloud-dlp
     #   google-cloud-documentai
     #   google-cloud-logging
+    #   google-cloud-modelarmor
     #   google-cloud-resource-manager
     #   google-cloud-storage
     #   google-cloud-trace
@@ -141,6 +142,7 @@ google-auth==2.57.0
     #   google-cloud-dlp
     #   google-cloud-documentai
     #   google-cloud-logging
+    #   google-cloud-modelarmor
     #   google-cloud-resource-manager
     #   google-cloud-storage
     #   google-cloud-trace
@@ -169,6 +171,8 @@ google-cloud-logging==3.16.3
     #   complaints-review (pyproject.toml)
     #   google-cloud-aiplatform
     #   opentelemetry-exporter-gcp-logging
+google-cloud-modelarmor==0.7.1
+    # via complaints-review (pyproject.toml)
 google-cloud-resource-manager==1.18.0
     # via google-cloud-aiplatform
 google-cloud-storage==3.13.1
@@ -211,6 +215,7 @@ grpcio==1.83.1
     #   google-cloud-dlp
     #   google-cloud-documentai
     #   google-cloud-logging
+    #   google-cloud-modelarmor
     #   google-cloud-resource-manager
     #   google-cloud-trace
     #   googleapis-common-protos
@@ -365,6 +370,7 @@ proto-plus==1.28.4
     #   google-cloud-dlp
     #   google-cloud-documentai
     #   google-cloud-logging
+    #   google-cloud-modelarmor
     #   google-cloud-resource-manager
     #   google-cloud-trace
 protobuf==6.33.6
@@ -378,6 +384,7 @@ protobuf==6.33.6
     #   google-cloud-dlp
     #   google-cloud-documentai
     #   google-cloud-logging
+    #   google-cloud-modelarmor
     #   google-cloud-resource-manager
     #   google-cloud-trace
     #   googleapis-common-protos
