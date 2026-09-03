@@ -1,7 +1,7 @@
 """Generation port — LLM text/reasoning for summarise, categorise and draft.
 
 Primary GCP adapter: Gemini models on the Gemini Enterprise Agent Platform
-(``gemini-3.5-flash`` for reasoning, ``gemini-3.1-flash-lite`` for triage). The service
+(``gemini-3.5-flash`` for reasoning, ``gemini-3.5-flash`` for triage). The service
 uses the LLM to summarise a complaint file, propose a categorisation with root cause,
 and draft a regulator/customer response grounded in retrieved policy.
 """

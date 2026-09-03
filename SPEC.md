@@ -34,7 +34,7 @@ default `local` path imports no google-cloud package.
 - Built on the **Gemini Enterprise Agent Platform** (host `aiplatform.googleapis.com`),
   region pinned `asia-southeast1`.
 - Models: reasoning `gemini-3.5-flash` (thinking=high) for summary, categorisation and
-  drafting; triage `gemini-3.1-flash-lite`. Never a floating default or `gemini-2.0-flash`.
+  drafting; triage `gemini-3.5-flash`. Never a floating default or `gemini-2.0-flash`.
 - Unified SDK `google-genai`. ADK `google-adk==2.7.1`. A2A v1.0 + MCP 2026-07-28.
 - Audit: Cloud Logging locked WORM bucket, retention 2557 days. Tracing: Cloud Trace via
   OpenTelemetry, message-content capture OFF. Eval: Gen AI evaluation service.
