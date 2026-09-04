@@ -1,16 +1,16 @@
 # Common-base practices audit
 
 - **Repo:** `complaints-review`
-- **Catalog id:** Doc6 (package `complaints_review`, env prefix `COMPLAINTS`)
+- **Catalog id:** `complaints-review` (package `complaints_review`, env prefix `COMPLAINTS`)
 - **Catalogue reference:** [`common-base-practices.md`](https://github.com/portable-genai/.github/blob/main/common-base-practices.md) (checks A1..G7)
 - **Authoritative source:** reconciled to the maintainer's cross-repository audit matrix, authoritative on verdicts.
 - **Note:** Each check was re-run against the current tree (greps run, files opened), with
   this repo's package (`complaints_review`) and env prefix (`COMPLAINTS`) substituted into
-  the catalogue's Check commands. The reference build is Doc1 (`cdd-sow-research`); this
+  the catalogue's Check commands. The reference build is `cdd-sow-research`; this
   scorecard mirrors its structure.
 
-Applicability: Doc6 ships a UI (`ui/`) and Terraform (`infra/terraform/`), so `[ui]` and
-`[infra]` checks apply, except C8 (web-login hardening) which is **N-A** because Doc6 owns
+Applicability: `complaints-review` ships a UI (`ui/`) and Terraform (`infra/terraform/`), so `[ui]` and
+`[infra]` checks apply, except C8 (web-login hardening) which is **N-A** because `complaints-review` owns
 no login: end-user identity is the IAP-injected assertion (gcp/platform) or a seeded dev
 persona (local), never an OIDC flow this repo implements. **Load-bearing** checks (a FAIL
 breaks a shared catalog guarantee) are A1-A6, C1-C5, D1-D3 and E1.
@@ -41,7 +41,7 @@ All 15 load-bearing checks (A1-A6, C1-C5, D1-D3, E1) PASS and none FAIL.
 | **C5** Fail-closed defaults everywhere `[all]` **(load-bearing)** | PASS | `main()` binds via `hex_service_kit.resolve_bind_host` (loopback under the no-auth local profile unless `COMPLAINTS_ALLOW_INSECURE_DEMO=1`); Makefile `API_HOST ?= 127.0.0.1`; CORS is `cors_allowlist` (explicit `COMPLAINTS_CORS_ORIGINS`, never `*`; dev-origin fallback ONLY under local). Proven by `tests/unit/test_netdefaults.py`. |
 | **C6** Security-header baseline on every surface `[ui]` | PASS | The nonce-based console CSP and hydration proof remain; the API now adds `nosniff`, `no-referrer`, and managed-profile HSTS alongside its frame policy. |
 | **C7** S2S calls authenticated, https-only outside loopback `[all]` | PASS | `adapters/platform/_s2s.py` sources `hex_service_kit.s2s`; all six platform delegates validate their base URL at construction and attach the S2S bearer + optional signed actor (headers `X-Cr-Actor`/`-Sig`). |
-| **C8** Web login flow hardening `[ui]` | N-A | Doc6 owns no login flow: identity is the IAP-injected assertion (gcp/platform) or a seeded dev persona (local). No `api/auth.py` / `adapters/oidc/`, so the OIDC hardening surface does not exist here. |
+| **C8** Web login flow hardening `[ui]` | N-A | `complaints-review` owns no login flow: identity is the IAP-injected assertion (gcp/platform) or a seeded dev persona (local). No `api/auth.py` / `adapters/oidc/`, so the OIDC hardening surface does not exist here. |
 | **C9** Tamper-evident audit with honest limits `[all]` | PASS | `LocalAppendOnlyAuditAdapter` wraps the shared `hex_service_kit.audit.HashChainedAuditLog`: SHA-256 chain, UPDATE/DELETE triggers, JSONL export/restore, `verify_chain()`, honest-limits docstring. Proven by `tests/unit/test_audit_chain.py`. |
 | **C10** No secret values in the repo `[all]` | PASS | `config/settings.yaml` stores only `*_env` names / `${ENV:-default}` interpolations; literal-secret grep is clean. |
 | **D1** Locked, reproducible installs everywhere `[all]` **(load-bearing)** | PASS | Committed `requirements-dev.lock` + `requirements-gcp.lock` (uv pip compile); `pyproject.toml` pins `ruff==0.15.18` exactly; the Dockerfile installs from the locked files. |
@@ -49,7 +49,7 @@ All 15 load-bearing checks (A1-A6, C1-C5, D1-D3, E1) PASS and none FAIL.
 | **D3** Whole gate runs offline, zero org secrets `[all]` **(load-bearing)** | PASS | `ci.yaml` (`COMPLAINTS_PROFILE: local`) runs ruff + format-check + mypy + pytest + local/onprem smoke; `eval-gate.yaml` (`COMPLAINTS_PROFILE: onprem`) runs the offline eval; no `secrets.` references. |
 | **D4** Non-root, minimal, healthchecked container `[infra]` | PASS | Multi-stage build; venv copied into the slim runtime; `USER appuser` (uid 10001); `EXPOSE 8095`; `HEALTHCHECK` on `/healthz`; `COMPLAINTS_PROFILE=gcp` set in the image; runtime stage carries no build toolchain. |
 | **D5** Deploy-time residency/sovereignty, parameterised `[infra]` | PASS | Singapore pinning, CMEK, VPC-SC and WORM controls are now CI-gated by Terraform fmt/init/validate. Live enforcement still needs a named apply and evidence. |
-| **E1** Offline eval smoke guards merge; Hrz4 owns promotion `[agentic]` **(load-bearing)** | PASS | `eval/run_eval.py` has the `--mode smoke|gate` split via the shared `agent-eval-kit` scaffold; `remote_evaluation.py` re-based on the shared `PromotionGateClient` (registered bundle `doc6-complaints-review` unchanged); gate mode refuses to run outside `COMPLAINTS_PROFILE=platform|gcp`. The pii-kit wiring is untouched. |
+| **E1** Offline eval smoke guards merge; `model-quality-gate` owns promotion `[agentic]` **(load-bearing)** | PASS | `eval/run_eval.py` has the `--mode smoke|gate` split via the shared `agent-eval-kit` scaffold; `remote_evaluation.py` re-based on the shared `PromotionGateClient` (registered bundle `doc6-complaints-review` unchanged); gate mode refuses to run outside `COMPLAINTS_PROFILE=platform|gcp`. The pii-kit wiring is untouched. |
 | **E2** Safety metric with strictest threshold, no false green `[agentic]` | PASS | `pii_safety >= 0.99` is the strictest metric, scored + gated, and now scored off the SAME shared `pii-kit` rows the runtime redactor uses (no duplicated inline detector) PLUS a pack-independent literal check. Weakening the redactor now fails the gate: with redaction disabled `pii_safety` drops to 0.6, and `tests/unit/test_redaction_service.py` proves per-market that each identifier is masked and would leak without redaction. See C4. |
 | **E3** Fixtures and golden data obviously fictional `[all]` | PASS | `eval/datasets/golden_complaints.jsonl` uses clearly-fake ids/customers (`cmp-mis-selling-vulnerable`, `CUST-FAKE`, `example.org`); DEMO.md carries the "fictional ... do [not use on live data] without sign-off" warning; COMPLIANCE.md has a Synthetic data section. |
 | **F1** Demo is code, offline, one command, presenter-paced `[all]` | PASS | `make demo` -> `scripts/complaints_demo.py` + `scripts/render_complaints_ui.py` (offline, no cloud/API key); `make demo-server` runs the click-through server; `complaints_demo_playwright.py` present. |
@@ -59,7 +59,7 @@ All 15 load-bearing checks (A1-A6, C1-C5, D1-D3, E1) PASS and none FAIL.
 | **G2** Compliance mapping table + adopter-owned crosswalk `[all]` | PASS | COMPLIANCE now includes an explicitly adopter-owned complaint-handling/MAS crosswalk with applicability, owner and evidence fields. |
 | **G3** Documented, mechanised fork path `[all]` | PASS | `docs/ADOPTING.md` documents the keep-vs-rewrite boundary, the core-vs-adopter file list, the one-pass rename and the human-decision checklist; `scripts/rename_fork.py` rewrites the package / CLI / `COMPLAINTS_` prefix / resource / dist in one pass (dry-run verified: exits 0, sensible plan, writes nothing). |
 | **G4** Retired `[all]` | N-A (retired) | Retired practice. Releases are tracked by git tag and the `pyproject.toml` version. |
-| **G5** Role-specific FAQs referencing sibling systems `[all]` | PASS | `docs/faq/` has a `README.md` index plus five role FAQs (security, portability, features, adoption, compliance), each naming the owning catalog id (Hrz1-Hrz5, Hrz7, Rsk1, Rsk3, Rsk6, Rgc9) for adjacent concerns rather than duplicating them. |
+| **G5** Role-specific FAQs referencing sibling systems `[all]` | PASS | `docs/faq/` has a `README.md` index plus five role FAQs (security, portability, features, adoption, compliance), each naming the owning catalog id (`agent-guardrail-gateway`-`agent-observability`, `human-review-console`, `compliance-advisory`, `architecture-validator`, `onprem-dlp`, `operational-resilience-mapping`) for adjacent concerns rather than duplicating them. |
 | **G6** Contribution docs cover full extension touch list `[all]` | PASS | CONTRIBUTING lists adapter and sub-service touch points and names the enforcing parity test. |
 | **G7** Markdown discipline: minimise em-dashes, validate mermaid `[all]` | PASS | README, SPEC, ARCHITECTURE, COMPLIANCE, CONTRIBUTING, DEMO and `docs/*.md` are all at 0 em-dashes. |
 
@@ -69,7 +69,7 @@ No load-bearing check FAILs and none remains PARTIAL.
 
 ## Gaps carried to systems/
 
-The Doc6 row's `Capability gaps` in
+The `complaints-review` row's `Capability gaps` in
 the maintainer's per-system register
 should track these.
 

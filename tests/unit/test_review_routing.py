@@ -1,4 +1,5 @@
-"""Unit tests for rule R8: an escalated complaint review is routed to Hrz7, not left as a boolean.
+"""Unit tests for rule R8: an escalated complaint review is routed to human-review-console, not left
+as a boolean.
 
 These prove the producer half of R8 without a live console, using the ``local`` in-memory outbox
 adapter and the shared payload builder:
@@ -94,7 +95,9 @@ def test_review_enqueues_exactly_one_review(
     service.review(sample_complaints.SAMPLE_COMPLAINT, actor=ACTOR, tenant=TENANT)
 
     pending = router.outbox.pending()
-    assert len(pending) == 1, "an escalated review must be routed to Hrz7 exactly once"
+    assert len(pending) == 1, (
+        "an escalated review must be routed to human-review-console exactly once"
+    )
     entry = pending[0]
     review = entry.review
     assert review.maker == ACTOR

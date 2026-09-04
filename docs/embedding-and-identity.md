@@ -242,7 +242,7 @@ Identity options by profile:
 | `gcp` / `platform` | `IapIdentityAdapter` | Verifies the signed `x-goog-iap-jwt-assertion` (signature, audience, issuer, expiry) against Google's IAP public keys; `tenant` from the `hd` claim; never logs the assertion. |
 | `onprem` | `OnPremIdentityAdapter` | Fail fast placeholder: raises `NotImplementedError` rather than returning an unverified identity (the correct fail closed default). Implement it against your enterprise IdP (OIDC/SAML). |
 
-Defense in depth PEP: the edge (Cloud IAP / Apigee) authenticates at ingress, the Hrz1 guardrail
+Defense in depth PEP: the edge (Cloud IAP / Apigee) authenticates at ingress, the `agent-guardrail-gateway`
 applies central policy, and this backend independently re verifies and derives identity itself, then
 enforces per user ACLs in retrieval. Each layer assumes the others may be bypassed.
 

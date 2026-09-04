@@ -1,6 +1,6 @@
-# Contributing · Doc6 Complaints & Conduct File Review
+# Contributing · `complaints-review` Complaints & Conduct File Review
 
-Thanks for helping improve Doc6. This is an engineering-portfolio reference repo: keep it
+Thanks for helping improve `complaints-review`. This is an engineering-portfolio reference repo: keep it
 internally consistent, production-grade in style, and green on the offline gate.
 
 ## Setup
@@ -18,7 +18,7 @@ ruff check src tests             # lint
 ruff format --check src tests    # format
 pytest -m 'not integration' -q   # unit + contract
 mypy src                         # type-check (best-effort)
-python eval/run_eval.py          # the Hrz4 / P-08 eval gate
+python eval/run_eval.py          # the `model-quality-gate` / P-08 eval gate
 ```
 
 `make fmt` auto-formats and auto-fixes; `make lint`, `make test`, `make eval` mirror the

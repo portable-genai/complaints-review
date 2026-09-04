@@ -1,6 +1,6 @@
-# Doc6 Complaints & Conduct File Review : demo console (UI)
+# `complaints-review` Complaints & Conduct File Review : demo console (UI)
 
-A small React / Next.js console that calls the Doc6 FastAPI backend and renders a complaint
+A small React / Next.js console that calls the `complaints-review` FastAPI backend and renders a complaint
 review: the structured summary, the categorisation with root cause, the conduct flags, and
 the draft regulator/customer response (clearly marked as a draft that the system never
 sends).

@@ -7,14 +7,14 @@ here. Read it first. This file carries only what is specific to this one.
 
 ## What this is
 
-Catalog id **Doc6**. Summarise, categorise and draft regulator-ready responses from
+Catalog id `complaints-review`. Summarise, categorise and draft regulator-ready responses from
 complaint / conduct files.
 
 ## Concrete bindings
 
 | | |
 |---|---|
-| Catalog id | `Doc6` |
+| Catalog id | `complaints-review` |
 | Package | `src/complaints_review/` |
 | Profile variable | `COMPLAINTS_PROFILE` |
 | Adapter families | `gcp`, `local`, `onprem`, `platform` |

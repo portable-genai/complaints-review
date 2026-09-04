@@ -1,6 +1,6 @@
 # Adopting this repo as your base
 
-This repository (Doc6, the Complaints and Conduct File Review agent) is a **common base**
+This repository (`complaints-review`, the Complaints and Conduct File Review agent) is a **common base**
 that BFSI institutions (and other regulated industries) can fork to build their own
 document-diligence review agents: complaints and conduct review, credit-memo review,
 claims triage, ESG due diligence, and similar. It ships a reusable hexagonal core (a pure
@@ -79,7 +79,7 @@ if you do not pass `--dist`. The script deliberately does NOT touch the human de
 1. **Region / residency.** Set the Terraform `region` / tfvars to your in-country region.
    The build defaults to `asia-southeast1` (MAS / Singapore). See
    [`docs/runbook.md`](runbook.md).
-2. **Identity / IdP.** Doc6 owns no login flow: end-user identity is the IAP-injected
+2. **Identity / IdP.** `complaints-review` owns no login flow: end-user identity is the IAP-injected
    assertion (`gcp`/`platform`) or a seeded dev persona (`local`), and `onprem` is a
    client-IdP placeholder. Wire your IdP / IAP at the deployment layer and implement the
    `onprem` identity adapter for a sovereign deployment. See
@@ -107,9 +107,9 @@ if you do not pass `--dist`. The script deliberately does NOT touch the human de
 This repo is one system in a catalog of composable GRC systems. Several concerns it *touches*
 are owned by sibling platform services, and you should integrate rather than rebuild them (see
 [`docs/faq/features-faq.md`](faq/features-faq.md) for the full map): the guardrail gateway
-(Hrz1), the governed knowledge base (Hrz2), the agent registry (Hrz3), the AI-quality / eval
-gate (Hrz4), observability + WORM audit (Hrz5), the human-review / maker-checker console (Hrz7,
-the rule-R8 target), the compliance assistant (Rsk1), and the on-prem DLP gate (Rsk6). The
+(`agent-guardrail-gateway`), the governed knowledge base (`enterprise-knowledge-base`), the agent registry (`agent-registry`), the AI-quality / eval
+gate (`model-quality-gate`), observability + WORM audit (`agent-observability`), the human-review / maker-checker console (`human-review-console`,
+the rule-R8 target), the compliance assistant (`compliance-advisory`), and the on-prem DLP gate (`onprem-dlp`). The
 `platform` profile's adapters are already thin HTTP clients to those services.
 
 ## 6. Adoption checklist

@@ -138,7 +138,7 @@ variable "resource_location_values" {
     NOT YET VERIFIED BY EXECUTION here: whether a `global` Agent Search data store is subject
     to this constraint at all, or is exempt as a global resource. Confirm at first apply and
     record the answer rather than guessing; the failure mode if it IS subject is an apply
-    error naming discoveryengine, which is the good kind of failure. Doc1 already has the
+    error naming discoveryengine, which is the good kind of failure. cdd-sow-research already has the
     Document AI half of this answer by execution: an `in:<region>-locations` policy BLOCKED
     processor creation at `us` with "violates constraint constraints/gcp.resourceLocations".
   EOT

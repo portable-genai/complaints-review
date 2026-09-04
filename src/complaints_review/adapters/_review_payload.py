@@ -1,12 +1,12 @@
 """Shared conversion from an escalated complaint review to an ``review-kit`` Review payload.
 
-Lives in the adapter layer (not the pure domain) because it depends on the kit. Redacts the
-subject descriptor, summary and citation snippets before they leave the process (R1 / P-04
-boundary), using the shared ``pii-kit`` (the same pack the redaction adapter uses), so no raw
-customer identifier reaches Hrz7 over the wire; Hrz7 redacts again before its own audit write
-(defense in depth). The maker (the reviewer/assistant that originated the review) and the tenant
-are asserted here and trusted by Hrz7 because this is an authenticated S2S caller (per-hop OBO is
-the deferred next layer).
+Lives in the adapter layer (not the pure domain) because it depends on the kit. Redacts the subject
+descriptor, summary and citation snippets before they leave the process (R1 / P-04 boundary), using
+the shared ``pii-kit`` (the same pack the redaction adapter uses), so no raw customer identifier
+reaches human-review-console over the wire; human-review-console redacts again before its own audit
+write (defense in depth). The maker (the reviewer/assistant that originated the review) and the
+tenant are asserted here and trusted by human-review-console because this is an authenticated S2S
+caller (per-hop OBO is the deferred next layer).
 """
 
 from __future__ import annotations
@@ -96,7 +96,9 @@ def _kit_citations(review: ComplaintReview) -> tuple[KitCitation, ...]:
 
 
 def review_to_review(review: ComplaintReview, *, maker: str, tenant: str = "") -> Review:
-    """Build the review a producer submits to Hrz7 when a complaint review escalates."""
+    """Build the review a producer submits to human-review-console when a complaint review
+    escalates.
+    """
     categorization = review.categorization
     products = ", ".join(review.summary.products) or "unknown"
     descriptor = (

@@ -1,14 +1,14 @@
-# SPEC · Doc6 Complaints & Conduct File Review
+# SPEC · `complaints-review` Complaints & Conduct File Review
 
 ## 1. Purpose and scope
 
-Doc6 is a **decision-support** assistant for Complaints and Conduct Ops at APAC banks. Given a
+`complaints-review` is a **decision-support** assistant for Complaints and Conduct Ops at APAC banks. Given a
 complaint / conduct file it produces a cited summary, a categorisation with root cause and
 conduct flags, and a draft regulator/customer response. It does not decide outcomes and it
 does not send anything: a human reviews the categorisation and sends the draft (P-06). The
 deployment is single-tenant and Singapore-resident (region `asia-southeast1`).
 
-- Catalog identity: **Doc6**, group `doc`, priority **P2**, buyer **Conduct / Compliance Ops**.
+- Catalog identity: `complaints-review`, group `doc`, priority **P2**, buyer **Conduct / Compliance Ops**.
 - Service port default: **8095**. Profile env var: **`COMPLAINTS_PROFILE`** (gcp | local |
   platform | onprem). Production sets gcp and dev/tests/CI set local, both explicitly: an
   unset variable binds the local adapter family so an offline process starts, but it is not
@@ -20,7 +20,7 @@ deployment is single-tenant and Singapore-resident (region `asia-southeast1`).
 |---------|----------|-----|
 | `gcp` | Document AI, Agent Search, Gemini, Model Armor, DLP, Cloud Logging WORM, Cloud Trace, Gen AI Evals (lazy SDK imports). | Production managed stack. |
 | `local` | SQLite FTS5 retrieval (BM25), deterministic schema-driven LLM, regex DLP, heuristic guardrail, append-only SQLite audit, no-op tracer, local document parser, in-process registry / tool catalog. No Google Cloud, no API key, no emulators by default. | A WORKING offline laptop stack: the default for dev, tests and CI; drives the suite and the CLI end to end. |
-| `platform` | Guardrail, redaction, knowledge-base, audit, registry and eval ports over HTTP to the shared Hrz1 to Hrz5 services. | Inside the full platform. |
+| `platform` | Guardrail, redaction, knowledge-base, audit, registry and eval ports over HTTP to the shared `agent-guardrail-gateway` to `agent-observability` services. | Inside the full platform. |
 | `onprem` | Fail-fast `NotImplementedError` placeholders. | Google Distributed Cloud migration target (P-02 / P-12). |
 
 Optional emulator opt-in: when `FIRESTORE_EMULATOR_HOST` is set and the `[gcp]` extra is
@@ -41,10 +41,10 @@ default `local` path imports no google-cloud package.
 
 ## 3. Dependencies (catalog matrix)
 
-Hrz1 Guardrail, Hrz2 Enterprise KB, Hrz3 Registry, Hrz4 AI Quality, Hrz5 Observability/Audit (all
+`agent-guardrail-gateway`, `enterprise-knowledge-base`, `agent-registry`, `model-quality-gate` AI Quality, `agent-observability` (all
 already built). `platform` clients plus on-prem stubs. Policy / regulatory-guidance
-retrieval is via Hrz2 `/v1/search`. Register in Hrz3 (R4), audit to Hrz5 (R2), Hrz4 gate at
-promotion (R5), Rsk3 at intake (R6). No Rsk1 dependency.
+retrieval is via `enterprise-knowledge-base` `/v1/search`. Register in `agent-registry` (R4), audit to `agent-observability` (R2), `model-quality-gate` at
+promotion (R5), `architecture-validator` at intake (R6). No `compliance-advisory` dependency.
 
 ## 4. Artifacts
 
@@ -75,7 +75,7 @@ audited):
 redact(narrative)
   -> guardrail(INPUT)                       [blocked -> audit BLOCKED + raise]
   -> extract attached documents (+ redact each extract)
-  -> Hrz2 retrieve policy / regulatory guidance  [empty -> audit + raise]
+  -> `enterprise-knowledge-base` retrieve policy / regulatory guidance  [empty -> audit + raise]
   -> llm summarise
   -> categorise (category + root cause + conduct flags; deterministic + LLM)
   -> llm draft response (grounded; always a draft)
@@ -87,7 +87,7 @@ redact(narrative)
 
 The draft response is never sent by the system (R1 / P-06): a human sends it.
 
-## 6. HTTP API (endpoints Doc6 defines)
+## 6. HTTP API (endpoints `complaints-review` defines)
 
 All JSON field names mirror the domain dataclasses (enums as strings). Requests carry no
 `actor`: identity is resolved server side from the verified `Principal` (an IAP assertion in
@@ -108,21 +108,21 @@ verified subject becomes the audit actor while the verified principals scope gov
 A guardrail block or an empty corpus is returned as a 200 blocked envelope
 (`{file_id, blocked, requires_human_review, detail, reason}`), never a 5xx.
 
-### Services Doc6 consumes
+### Services `complaints-review` consumes
 
-- Hrz1 guardrail (`GUARDRAIL_GATEWAY_URL`): `POST /v1/guardrail/screen`, `POST /v1/redact`.
-- Hrz2 enterprise KB (`KNOWLEDGE_BASE_URL`): `POST /v1/search`.
-- Hrz3 registry (`AGENT_REGISTRY_URL`): `POST /v1/agents`, `GET /v1/agents/{name}`,
+- `agent-guardrail-gateway` (`GUARDRAIL_GATEWAY_URL`): `POST /v1/guardrail/screen`, `POST /v1/redact`.
+- `enterprise-knowledge-base` (`KNOWLEDGE_BASE_URL`): `POST /v1/search`.
+- `agent-registry` (`AGENT_REGISTRY_URL`): `POST /v1/agents`, `GET /v1/agents/{name}`,
   `GET /v1/agents`.
-- Hrz4 AI quality (`QUALITY_GATE_URL`): `POST /v1/evaluations` and `POST /v1/gate`, each with a
+- `model-quality-gate` AI quality (`QUALITY_GATE_URL`): `POST /v1/evaluations` and `POST /v1/gate`, each with a
   structured body `{target: {model, prompt_version, dataset_id, system}, dataset_id, bundle:
   "doc6-complaints-review"}`. `/v1/evaluations` returns `{results[]}` (parsed from `results`, not
   `metrics`); `/v1/gate` returns `{passed}`. Metric selection is by the registered bundle name
   `doc6-complaints-review` (no bare metric names); the top-level `dataset_id` must equal
-  `target.dataset_id`, and Hrz4 returns 422 on divergence or on unregistered metric names.
-- Hrz5 observability (`OBSERVABILITY_URL`): `POST /v1/audit`.
+  `target.dataset_id`, and `model-quality-gate` returns 422 on divergence or on unregistered metric names.
+- `agent-observability` (`OBSERVABILITY_URL`): `POST /v1/audit`.
 
-## 7. Eval gate (Hrz4 / P-08)
+## 7. Eval gate (`model-quality-gate` / P-08)
 
 `eval/run_eval.py` drives the real `ComplaintReviewService` over a synthetic golden set with
 deterministic fakes (no GCP). Metrics and thresholds:
@@ -135,12 +135,12 @@ deterministic fakes (no GCP). Metrics and thresholds:
 | `pii_safety` | >= 0.99 (no unredacted PII; response always a draft, never auto-sent) |
 
 Exit non-zero on any failure. The production evaluator (`--use-gcp`) routes through the Gen
-AI evaluation service; the `platform` profile routes to Hrz4, which selects this metric suite
+AI evaluation service; the `platform` profile routes to `model-quality-gate`, which selects this metric suite
 from the registered `doc6-complaints-review` bundle rather than from bare metric names (see the
-Hrz4 contract in §6).
+`model-quality-gate` contract in §6).
 
 ## 8. Non-goals
 
-- Doc6 does not decide complaint outcomes or remediation amounts.
-- Doc6 does not send any response to a customer or a regulator.
-- Doc6 does not build its own retrieval backend; policy / regulatory guidance is Hrz2's (R3).
+- `complaints-review` does not decide complaint outcomes or remediation amounts.
+- `complaints-review` does not send any response to a customer or a regulator.
+- `complaints-review` does not build its own retrieval backend; policy / regulatory guidance is `enterprise-knowledge-base`'s (R3).

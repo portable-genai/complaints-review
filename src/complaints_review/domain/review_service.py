@@ -105,7 +105,8 @@ class ComplaintReviewService:
         self._audit = audit
         policy = complaint_policy or ComplaintPolicy()
         self._review = review_policy or ComplaintReviewPolicy(policy=policy)
-        # Rule R8: when the review requires human review it is routed to Hrz7 (the maker-checker
+        # Rule R8: when the review requires human review it is routed to human-review-console (the
+        # maker-checker
         # console), not left as a boolean. Optional so unit tests and the CLI can omit it; when
         # unset the escalation still audits ESCALATED, it just is not forwarded to a console.
         self._review_router = review_router
@@ -231,7 +232,8 @@ class ComplaintReviewService:
             },
         )
 
-        # Route the escalation to Hrz7 (rule R8). A complaint review always requires human review,
+        # Route the escalation to human-review-console (rule R8). A complaint review always requires
+        # human review,
         # so it is handed to the maker-checker console rather than terminating in a boolean; the
         # adapter redacts before the wire. Best-effort: a console outage must not fail an already-
         # assembled, already-audited review (the audit ESCALATED record is the durable escalation

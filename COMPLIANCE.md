@@ -1,19 +1,19 @@
-# COMPLIANCE · Doc6 Complaints & Conduct File Review
+# COMPLIANCE · `complaints-review` Complaints & Conduct File Review
 
-How Doc6 maps to the catalog's General Principles (P-01..P-12) and rules (R1..R6, R8), with the
+How `complaints-review` maps to the catalog's General Principles (P-01..P-12) and rules (R1..R6, R8), with the
 concrete control in **this** repo. Principles that do not apply are marked **n/a** with the
 reason.
 
 ## General Principles
 
-| ID | Principle | How Doc6 satisfies it (concrete control) |
+| ID | Principle | How `complaints-review` satisfies it (concrete control) |
 |----|-----------|-----------------------------------------|
 | P-01 | Managed-first, minimal surface | Document AI, Agent Search, Gemini, Model Armor, DLP, Cloud Logging, Cloud Trace, Gen AI evals: only the services used are enabled (`infra/terraform/apis.tf`). |
 | P-02 | No vendor lock-in (ports + adapters) | 10 `Protocol` ports; four adapter families (`gcp`, `local`, `platform`, `onprem`); one-line `profile` switch. The `local` family proves the domain runs entirely off-cloud (SQLite FTS5, deterministic LLM, regex DLP, no Google Cloud SDK); the `onprem` family proves reversibility; the contract test enforces parity across `local` and `onprem`. |
 | P-03 | Data residency / in-country | **PARTIAL, and the gaps are Document AI and Agent Search.** Every managed resource except those two takes its location from `region`, chosen at deploy time and validated in Terraform against the `allowed_regions` residency allowlist (default `asia-southeast1`; extending that list is the review point), with a VPC-SC perimeter (`vpc_sc.tf`) blocking exfiltration and a `gcp.resourceLocations` Org Policy (`org_policy.tf`, generated from the same allowlist) REFUSING the creation of a resource outside it. Until 2026-08-28 that policy was absent here, so residency rested on per-resource pins alone: every resource named the right location and nothing refused one that did not. Where a deviation below widens the policy, `resource_location_values` states the width, and the width is the residency claim. **Document AI reaches `asia-southeast1` only once Google grants single-region access**, so processor and adapter both default to the `us` MULTI-REGION and complaint document bytes are extracted in the United States (`docai_location`, `COMPLAINTS_DOCAI_LOCATION`; move both together when access lands, and both halves refuse a location that is neither the deploy region nor a named multi-region, `global` by name). **Agent Search serves no Cloud region at all** (`global`, `us`, `eu` only), so the policy corpus defaults to `global` and is unlocated; `us` or `eu` confines it to one jurisdiction where an obligation bites. Both are stated deviations to a named location, never to a global endpoint standing in for a region. |
-| P-04 | Minimise PII to the model | **Emphasis.** Customer PII (NRIC, email, name, card, etc.) is redacted at the boundary by the DLP / Hrz1 redaction adapter before any model, KB, span or audit write. Each attached document extract is redacted too. |
+| P-04 | Minimise PII to the model | **Emphasis.** Customer PII (NRIC, email, name, card, etc.) is redacted at the boundary by the DLP / `agent-guardrail-gateway` redaction adapter before any model, KB, span or audit write. Each attached document extract is redacted too. |
 | P-05 | Defence in depth | Redaction + guardrail in the domain pipeline **and** again at the ADK model boundary (`agent/callbacks.py`). |
-| P-06 | Maker-checker (human in the loop) | **Emphasis.** `ComplaintReviewPolicy`: a review always `requires_human_review=True`; the **draft response is never sent by the system** (`draft_is_sendable()` is always false); high-stakes flags escalate to a senior checker. The escalation is ROUTED to the Hrz7 maker-checker console (rule R8), not left as a boolean (`ports/review_router.py`, `adapters/*/review_router.py`). |
+| P-06 | Maker-checker (human in the loop) | **Emphasis.** `ComplaintReviewPolicy`: a review always `requires_human_review=True`; the **draft response is never sent by the system** (`draft_is_sendable()` is always false); high-stakes flags escalate to a senior checker. The escalation is ROUTED to the `human-review-console` maker-checker console (rule R8), not left as a boolean (`ports/review_router.py`, `adapters/*/review_router.py`). |
 | P-07 | Everything audited (provenance) | **Emphasis.** Every interaction writes an already-redacted `AuditEvent` to a locked WORM bucket; every artifact carries page-level `Citation`s mapped from retrieved passages. |
 | P-08 | Quality / model-risk gate | `eval/run_eval.py` (offline) + `GenAiEvalAdapter` (production) enforce categorisation accuracy, groundedness, citation accuracy and PII safety thresholds; CI fails below threshold. |
 | P-09 | CMEK does not cascade | One regional CMEK key ring; explicit per-service-agent key bindings for Document AI, Vertex/Agent Runtime and Logging (`infra/terraform/kms.tf`). |
@@ -23,15 +23,15 @@ reason.
 
 ## Rules
 
-| ID | Rule | How Doc6 satisfies it |
+| ID | Rule | How `complaints-review` satisfies it |
 |----|------|----------------------|
-| R1 | Hrz1 guardrail + redaction (PII workloads) | **Applies.** Complaint files carry customer PII, so the full pipeline runs: redact then guardrail-screen on INPUT and OUTPUT, both in the domain service and at the model boundary. |
-| R2 | Hrz5 audit | Every interaction is recorded to the WORM audit sink (Cloud Logging locked bucket or Hrz5 `/v1/audit`). |
-| R3 | Hrz2 governed RAG | Policy and regulatory guidance is retrieved from the Hrz2 Enterprise KB with the actor's ACL principals; Doc6 builds no bespoke retrieval backend. |
-| R4 | Hrz3 registry | Doc6 publishes an A2A AgentCard (`/.well-known/agent-card.json`) and can register with Hrz3 (`AgentRegistryPort`). |
-| R5 | Hrz4 eval gate at promotion | The Hrz4 eval gate (offline + `GenAiEvalAdapter`) gates promotion to Agent Runtime. |
-| R6 | Rsk3 at intake | A complaint file is taken in at intake and screened per the catalog's intake control (Rsk3) before review; Doc6 consumes the screened file. |
-| R8 | Route `requires_human_review` to Hrz7 | **Applies.** Every escalated complaint review is submitted to the Hrz7 Human-Review & Maker-Checker Console via the shared `review-kit` client (redact-before-wire); `local` enqueues to a transactional outbox so the routing path runs offline, `gcp`/`platform` submit over S2S to Hrz7's service intake (`HUMAN_REVIEW_URL`). `ports/review_router.py`, `adapters/{local,platform,onprem}/review_router.py`, `adapters/_review_payload.py`. |
+| R1 | `agent-guardrail-gateway` + redaction (PII workloads) | **Applies.** Complaint files carry customer PII, so the full pipeline runs: redact then guardrail-screen on INPUT and OUTPUT, both in the domain service and at the model boundary. |
+| R2 | `agent-observability` | Every interaction is recorded to the WORM audit sink (Cloud Logging locked bucket or `agent-observability` `/v1/audit`). |
+| R3 | `enterprise-knowledge-base` | Policy and regulatory guidance is retrieved from the `enterprise-knowledge-base` with the actor's ACL principals; `complaints-review` builds no bespoke retrieval backend. |
+| R4 | `agent-registry` | `complaints-review` publishes an A2A AgentCard (`/.well-known/agent-card.json`) and can register with `agent-registry` (`AgentRegistryPort`). |
+| R5 | `model-quality-gate` at promotion | The `model-quality-gate` (offline + `GenAiEvalAdapter`) gates promotion to Agent Runtime. |
+| R6 | `architecture-validator` at intake | A complaint file is taken in at intake and screened per the catalog's intake control (`architecture-validator`) before review; `complaints-review` consumes the screened file. |
+| R8 | Route `requires_human_review` to `human-review-console` | **Applies.** Every escalated complaint review is submitted to the `human-review-console` Human-Review & Maker-Checker Console via the shared `review-kit` client (redact-before-wire); `local` enqueues to a transactional outbox so the routing path runs offline, `gcp`/`platform` submit over S2S to `human-review-console`'s service intake (`HUMAN_REVIEW_URL`). `ports/review_router.py`, `adapters/{local,platform,onprem}/review_router.py`, `adapters/_review_payload.py`. |
 
 ## Synthetic data
 

@@ -1,6 +1,6 @@
-# Architecture · Doc6 Complaints & Conduct File Review
+# Architecture · `complaints-review` Complaints & Conduct File Review
 
-Doc6 is a hexagonal (ports-and-adapters) service. The **domain core** is pure Python with no
+`complaints-review` is a hexagonal (ports-and-adapters) service. The **domain core** is pure Python with no
 cloud dependency; every external capability is reached through a **port** (a
 `typing.Protocol`); each port has four interchangeable **adapter** families (`gcp`,
 `local`, `platform`, `onprem`) selected by a one-line `profile` switch. This is what makes
@@ -18,14 +18,14 @@ flowchart LR
     adapters["adapters/"]
     gcp["gcp/<br/>primary managed-service adapters (lazy GCP SDK imports)"]
     local["local/<br/>working offline stack (SQLite FTS5, deterministic LLM, no SDK)"]
-    platform["platform/<br/>thin HTTP clients to the shared Hrz1 to Hrz5 services"]
+    platform["platform/<br/>thin HTTP clients to the shared `agent-guardrail-gateway` to `agent-observability` services"]
     onprem["onprem/<br/>NotImplementedError placeholder stubs (P-02 / P-12)"]
     agent["agent/<br/>ADK agent + A2A card (no MCP server: see below)"]
     api["api/<br/>FastAPI service"]
     cli["cli/<br/>Typer CLI (entry point: complaints-review)"]
     srcconfig["config.py<br/>Settings + Container (DI for the hexagon)"]
     cfg["config/settings.yaml<br/>port -> adapter bindings, region, models"]
-    eval["eval/<br/>run_eval.py + golden dataset (the Hrz4 gate)"]
+    eval["eval/<br/>run_eval.py + golden dataset (the `model-quality-gate`)"]
     infra["infra/terraform/<br/>asia-southeast1 managed resources"]
 
     root --> src
@@ -55,15 +55,15 @@ flowchart LR
 | Port | Responsibility | gcp adapter | local adapter | platform adapter | onprem adapter |
 |------|----------------|-------------|---------------|------------------|----------------|
 | `DocumentExtractionPort` | Parse a complaint document | Document AI | local parser (pypdf / text) | n/a | stub |
-| `KnowledgeBaseClientPort` | Governed RAG over policy / regulation (Hrz2) | Agent Search | SQLite FTS5 (BM25) | Hrz2 `/v1/search` | stub |
+| `KnowledgeBaseClientPort` | Governed RAG over policy / regulation (`enterprise-knowledge-base`) | Agent Search | SQLite FTS5 (BM25) | `enterprise-knowledge-base` `/v1/search` | stub |
 | `LLMPort` | Summarise, categorise, draft (Gemini) | Gemini | deterministic schema-driven | n/a | stub |
-| `GuardrailPort` | Screen input + output (Hrz1) | Model Armor | heuristic injection screen | Hrz1 `/v1/guardrail/screen` | stub |
-| `PIIRedactionPort` | De-identify PII (Hrz1) | DLP | regex (NRIC, email, phone) | Hrz1 `/v1/redact` | stub |
-| `AuditSinkPort` | WORM audit (Hrz5) | Cloud Logging | append-only SQLite | Hrz5 `/v1/audit` | stub |
-| `ObservabilityTracerPort` | Trace spans (Hrz5) | Cloud Trace | no-op spans | n/a | no-op |
-| `EvaluationGatePort` | Promotion eval (Hrz4) | Gen AI evals | offline `run_eval.py` | Hrz4 `/v1/evaluations` | stub |
-| `AgentRegistryPort` | A2A registry (Hrz3) | in-process | in-process (Firestore emulator opt-in) | Hrz3 `/v1/agents` | stub |
-| `ToolCatalogPort` | Governed MCP tools (Hrz3) | in-process | in-process | n/a | stub |
+| `GuardrailPort` | Screen input + output (`agent-guardrail-gateway`) | Model Armor | heuristic injection screen | `agent-guardrail-gateway` `/v1/guardrail/screen` | stub |
+| `PIIRedactionPort` | De-identify PII (`agent-guardrail-gateway`) | DLP | regex (NRIC, email, phone) | `agent-guardrail-gateway` `/v1/redact` | stub |
+| `AuditSinkPort` | WORM audit (`agent-observability`) | Cloud Logging | append-only SQLite | `agent-observability` `/v1/audit` | stub |
+| `ObservabilityTracerPort` | Trace spans (`agent-observability`) | Cloud Trace | no-op spans | n/a | no-op |
+| `EvaluationGatePort` | Promotion eval (`model-quality-gate`) | Gen AI evals | offline `run_eval.py` | `model-quality-gate` `/v1/evaluations` | stub |
+| `AgentRegistryPort` | A2A registry (`agent-registry`) | in-process | in-process (Firestore emulator opt-in) | `agent-registry` `/v1/agents` | stub |
+| `ToolCatalogPort` | Governed MCP tools (`agent-registry`) | in-process | in-process | n/a | stub |
 
 **The tool catalog is DECLARED and deliberately not SERVED, and that is a decision rather than
 a gap.** Fourteen trees in the fleet serve their catalog over MCP 2026-07-28 on stdio; this one
@@ -93,7 +93,7 @@ parity for every port.
 The orchestration lives in three services plus a policy, all pure Python:
 
 - **`ComplaintReviewService`** : the end-to-end pipeline. It redacts, guardrail-screens
-  (INPUT), extracts and redacts attached documents, retrieves policy from Hrz2, summarises,
+  (INPUT), extracts and redacts attached documents, retrieves policy from `enterprise-knowledge-base`, summarises,
   categorises, drafts, guardrail-screens (OUTPUT), assembles the `ComplaintReview`, and
   audits. A guardrail block or an empty corpus raises rather than emit a partial or
   ungrounded conduct decision.
@@ -117,7 +117,7 @@ the SPEC mandates while sharing one well-tested core.
 `config.py` reads `config/settings.yaml` (with `${ENV_VAR}` interpolation), and the
 `Container` binds each port to the dotted-path adapter for the active `profile`, falling
 back to the `gcp` entry. `COMPLAINTS_PROFILE` selects `gcp` (managed), `local` (the working
-offline stack), `platform` (the shared Hrz1 to Hrz5 services over HTTP) or `onprem` (the
+offline stack), `platform` (the shared `agent-guardrail-gateway` to `agent-observability` services over HTTP) or `onprem` (the
 migration stubs). The default for dev, tests and CI is `local`, which is why the whole suite
 runs end to end with no Google Cloud SDK installed; the production default in
 `settings.yaml` is `gcp`.

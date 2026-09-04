@@ -6,8 +6,8 @@ its Protocol. This suite proves the stronger claim behind the no-lock-in promise
 identically at the boundary, so switching ``COMPLAINTS_PROFILE`` swaps the whole stack
 without changing what the domain sees.
 
-Doc6 ships REAL ``platform`` HTTP clients (thin horizontal-platform delegates) alongside
-the ``local`` in-process adapters, so this suite covers three representative ports two
+complaints-review ships REAL ``platform`` HTTP clients (thin horizontal-platform delegates)
+alongside the ``local`` in-process adapters, so this suite covers three representative ports two
 ways:
 
 * **redaction** (real ``platform`` delegate): the same PII text is put through both, and

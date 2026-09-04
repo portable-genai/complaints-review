@@ -1,6 +1,6 @@
-# Terraform: Doc6 Complaints & Conduct File Review infrastructure (asia-southeast1)
+# Terraform: `complaints-review` Complaints & Conduct File Review infrastructure (asia-southeast1)
 
-Concrete, in-region (Singapore) infrastructure for the Doc6 service. Only `project_id` and a
+Concrete, in-region (Singapore) infrastructure for the `complaints-review` service. Only `project_id` and a
 couple of genuinely per-tenant values (org/billing ids, the VPC-SC toggle) are variables;
 every service identifier and template name is a fixed value and every location derives from
 `var.region`, which is chosen at deploy time and validated against the `allowed_regions`
@@ -8,15 +8,15 @@ residency allowlist (default `["asia-southeast1"]`), so the deploy is reproducib
 unvetted region fails fast (P-03).
 
 > Policy and regulatory-guidance retrieval infrastructure (the governed RAG store) lives in
-> **Hrz2** (`enterprise-knowledge-base`), not here. Doc6 retrieves policy via Hrz2; this stack
-> provisions only what Doc6 owns: complaint-document extraction, PII redaction, the guardrail,
+> `enterprise-knowledge-base` (`enterprise-knowledge-base`), not here. `complaints-review` retrieves policy via `enterprise-knowledge-base`; this stack
+> provisions only what `complaints-review` owns: complaint-document extraction, PII redaction, the guardrail,
 > the WORM audit trail, CMEK, IAM and the perimeter.
 
 ## What this provisions
 
 | File | Resource | Principle |
 |------|----------|-----------|
-| `apis.tf` | Enables only the managed services Doc6 uses | P-01 |
+| `apis.tf` | Enables only the managed services `complaints-review` uses | P-01 |
 | `document_ai.tf` | Document AI form-parser processor (complaint extraction) | P-03 |
 | `dlp.tf` | DLP inspect + deidentify templates (incl. SG NRIC/FIN, passport) | P-04, R1 |
 | `model_armor.tf` | Model Armor guardrail template (both directions) | R1 |

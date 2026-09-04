@@ -1,13 +1,13 @@
-# Runbook · Doc6 Complaints & Conduct File Review
+# Runbook · `complaints-review` Complaints & Conduct File Review
 
-Operational notes for running and deploying Doc6.
+Operational notes for running and deploying `complaints-review`.
 
 ## Profiles
 
 | Profile | When | What it binds |
 |---------|------|----------------|
 | `onprem` | local dev, CI, tests | placeholder stubs (no Google Cloud SDK needed) |
-| `platform` | inside the full platform | HTTP clients to the shared Hrz1 to Hrz5 services |
+| `platform` | inside the full platform | HTTP clients to the shared `agent-guardrail-gateway` to `agent-observability` services |
 | `gcp` | standalone managed deploy | Document AI, Agent Search, Gemini, Model Armor, DLP, Cloud Logging, Cloud Trace, Gen AI evals |
 
 Set `COMPLAINTS_PROFILE` (env) or `profile:` in `config/settings.yaml`. Defaults to `local`
@@ -50,8 +50,8 @@ to exercise the pipeline with fakes.
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | CLI exits with code 2 naming a migration target | running the `onprem` profile, which has placeholder adapters | switch to `gcp` / `platform`, or implement the on-prem adapter |
-| `RetrievalEmptyError` | Hrz2 returned no policy passages for the complaint | check the Hrz2 corpus / ACL principals for the actor |
-| `GuardrailBlockedError` | Model Armor / Hrz1 blocked the input or the draft | review the flagged content; the request is audited as BLOCKED |
+| `RetrievalEmptyError` | `enterprise-knowledge-base` returned no policy passages for the complaint | check the `enterprise-knowledge-base` corpus / ACL principals for the actor |
+| `GuardrailBlockedError` | Model Armor / `agent-guardrail-gateway` blocked the input or the draft | review the flagged content; the request is audited as BLOCKED |
 | Import error mentioning `google-cloud-*` | running the `gcp` profile without the `[gcp]` extra | `pip install -e ".[gcp,dev]"` |
 
 ## On-prem migration
