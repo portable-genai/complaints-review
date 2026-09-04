@@ -1,7 +1,7 @@
 # FAQ index
 
 Answers to the questions different teams ask when evaluating, adopting, or reviewing this
-repository (Doc6, the Complaints and Conduct File Review agent) as a common base. Each file
+repository (`complaints-review`, the Complaints and Conduct File Review agent) as a common base. Each file
 is written for a specific audience; skim the one that matches your role.
 
 | FAQ | For | Answers |

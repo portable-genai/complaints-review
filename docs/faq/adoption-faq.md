@@ -52,7 +52,7 @@ Honest answer: not yet fully. Today the compliance-tunable values are **module c
 the escalating-flags and high-severity sets in `domain/review_policy.py`, and the statutory
 deadline window (`_DEADLINE_DAYS`) and vulnerability keywords in
 `domain/categorization_service.py`. Externalizing them into a `policy:` section of
-`config/settings.yaml` (with a defaults-equal-reference override test, the Doc1 pattern) is a
+`config/settings.yaml` (with a defaults-equal-reference override test, the `cdd-sow-research` pattern) is a
 **known open item**, tracked as check B4 in [`docs/practices-audit.md`](../practices-audit.md).
 Until it lands, own those numbers by editing the constants (and add a test that pins your
 values); do not assume a settings-reachable override exists.
@@ -63,7 +63,7 @@ Be aware that a CI demo self-test does **not** exist here yet (check F2 in
 [`docs/practices-audit.md`](../practices-audit.md)): there is no headless assertion of the
 live demo state and no `test_demo_server.py`, so a refactor that breaks the walkthrough will
 not fail the PR on its own. If the demo matters to your delivery, adding that self-test is a
-recommended early step; the Doc1 base has one you can mirror.
+recommended early step; the `cdd-sow-research` base has one you can mirror.
 
 ### Does the CI run for my fork out of the box?
 

@@ -5,7 +5,7 @@ LLM, and, importantly, where its responsibilities **stop** and a sibling catalog
 over. Cross-references: [`README.md`](../../README.md), [`SPEC.md`](../../SPEC.md),
 [`DEMO.md`](../../DEMO.md).
 
-### What does Doc6 actually produce?
+### What does `complaints-review` actually produce?
 
 From a customer complaint / conduct file it produces four cited artifacts:
 
@@ -40,7 +40,7 @@ lower it and never auto-execute. Proven by `test_review_always_required` and
 
 Because every complaint review requires a human, the escalation is **routed**, not left as a
 per-repo boolean. The shared `review-kit` client (redact-before-wire) submits the review
-over S2S to the sibling **Hrz7** Human-Review and Maker-Checker Console under `gcp`/`platform`
+over S2S to the sibling `human-review-console` under `gcp`/`platform`
 (`HUMAN_REVIEW_URL`); the `local` profile enqueues to an in-memory outbox so the routing
 path runs offline; and `onprem` is the sovereign placeholder
 (`ports/review_router.py`, `adapters/{local,platform,onprem}/review_router.py`). Proven by
@@ -53,27 +53,27 @@ conduct review domain logic and its four outputs. It **integrates** (via the `pl
 profile's HTTP adapters) several cross-cutting concerns owned by sibling platform systems; do
 not rebuild these in a fork:
 
-| Concern | Owned by (catalog id / repo) | Doc6's role |
+| Concern | Owned by (catalog id / repo) | `complaints-review`'s role |
 |---|---|---|
-| Runtime guardrail: PII redaction, prompt-injection / jailbreak defense | **Hrz1** `agent-guardrail-gateway` | consumes it on every review (input + output screen) |
-| Governed RAG / ACL-aware knowledge base with citations | **Hrz2** `enterprise-knowledge-base` | retrieves grounded policy / precedent passages from it |
-| Agent registry, versioning, identity, entitlements | **Hrz3** `agent-registry` | publishes its A2A AgentCard for discovery |
-| AI-quality / eval / model-risk promotion gate | **Hrz4** `model-quality-gate` | its eval metrics gate promotion; the offline gate mirrors it |
-| Observability + immutable WORM prompt/response audit | **Hrz5** `agent-observability` | writes audit events to it; traces spans through it |
-| Human-review / maker-checker console (the R8 target) | **Hrz7** `human-review-console` | routes every review to it for a human to dispose |
-| Regulatory Q&A / conduct-rule checklists | **Rsk1** `compliance-advisory` | consumes it for regulatory compliance checks |
-| On-prem, CPU-only DLP scrub before egress | **Rsk6** `onprem-dlp` | the sovereign-DLP option behind the redaction port |
+| Runtime guardrail: PII redaction, prompt-injection / jailbreak defense | `agent-guardrail-gateway` | consumes it on every review (input + output screen) |
+| Governed RAG / ACL-aware knowledge base with citations | `enterprise-knowledge-base` | retrieves grounded policy / precedent passages from it |
+| Agent registry, versioning, identity, entitlements | `agent-registry` | publishes its A2A AgentCard for discovery |
+| AI-quality / eval / model-risk promotion gate | `model-quality-gate` | its eval metrics gate promotion; the offline gate mirrors it |
+| Observability + immutable WORM prompt/response audit | `agent-observability` | writes audit events to it; traces spans through it |
+| Human-review / maker-checker console (the R8 target) | `human-review-console` | routes every review to it for a human to dispose |
+| Regulatory Q&A / conduct-rule checklists | `compliance-advisory` | consumes it for regulatory compliance checks |
+| On-prem, CPU-only DLP scrub before egress | `onprem-dlp` | the sovereign-DLP option behind the redaction port |
 
 So the guardrail, knowledge base, audit sink, eval platform and review console are
-*dependencies*, not features of this repo. Doc6's own summary / categorization / conduct-flag
+*dependencies*, not features of this repo. `complaints-review`'s own summary / categorization / conduct-flag
 logic is the file-level review, distinct from the platform's runtime controls.
 
 ### How does this relate to other systems in the catalog?
 
-Doc6 is a **file-level** complaints and conduct review: it reasons over one complaint file and
+`complaints-review` is a **file-level** complaints and conduct review: it reasons over one complaint file and
 proposes an assessment plus a draft. Enterprise-scale complaint *case management* and workflow
 orchestration (routing, SLAs, queues across many cases) and the human disposition step are the
-sibling **Hrz7** `human-review-console`; do not duplicate those
+sibling `human-review-console`; do not duplicate those
 here. Check [the organization's repository index](https://github.com/portable-genai) before
 building a capability that may already have a home.
 

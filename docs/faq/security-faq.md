@@ -80,12 +80,12 @@ The API sets a CSP `frame-ancestors` directive and `X-Frame-Options: SAMEORIGIN`
 UI sets `frame-ancestors`. A fuller baseline (`X-Content-Type-Options: nosniff`,
 `Referrer-Policy`, HSTS on secure profiles, and a full UI CSP with `default-src 'self'` and a
 scoped `connect-src`) is a **known open hardening item** tracked as check C6 in
-[`docs/practices-audit.md`](../practices-audit.md); do not assume the full Doc1 header set is
+[`docs/practices-audit.md`](../practices-audit.md); do not assume the full `cdd-sow-research` header set is
 present here yet.
 
 ### Is there an OIDC login flow to review?
 
-No, by design. Doc6 does not implement an Authorization Code / PKCE flow, session cookies, or
+No, by design. `complaints-review` does not implement an Authorization Code / PKCE flow, session cookies, or
 JWKS verification; end-user identity is the IAP-injected assertion or a seeded dev persona
 (see the identity question above). Check C8 in the practices audit is marked **N-A** for this
 repo for exactly this reason. If your deployment needs an interactive login, that belongs at
@@ -100,7 +100,7 @@ SQLite `UPDATE`/`DELETE` triggers enforcing append-only, plus JSONL export/resto
 which tamper classes the chain alone catches and which it does not (a chain with no external
 secret cannot by itself detect a full rewrite). In production the `gcp` profile writes to a
 locked WORM log bucket, which provides non-rewritability itself. This repo does not *replace*
-the platform audit system (Hrz5); see [features-faq.md](features-faq.md). Proven in
+the platform audit system (`agent-observability`); see [features-faq.md](features-faq.md). Proven in
 `tests/unit/test_audit_chain.py`.
 
 ### Supply chain: are dependencies pinned and scanned?

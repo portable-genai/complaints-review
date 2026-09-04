@@ -1,6 +1,6 @@
-# Demo guide - Doc6 Complaints & Conduct File Review
+# Demo guide - `complaints-review` Complaints & Conduct File Review
 
-Step-by-step scripts for demoing Doc6 two ways:
+Step-by-step scripts for demoing `complaints-review` two ways:
 
 - **Demo A - Audit-first complaint review on a laptop** (the headline flow): a conduct
   officer works an intake queue of synthetic complaint files. For each file the system
@@ -142,7 +142,7 @@ If you only want to show a single cited review (not the whole queue):
 
 ```bash
 export COMPLAINTS_PROFILE=local
-complaints-review review CMP-LOCAL-001 \
+complaints-review CMP-LOCAL-001 \
   --narrative "The branch sold me a structured investment product I did not understand and I am a vulnerable customer." \
   --product "structured investment product" --channel branch --received 2026-06-01
 # or simply:
@@ -243,7 +243,7 @@ in `asia-southeast1` with CMEK ([README "Architecture at a glance"](README.md#ar
   narrates and drafts. Deterministic flags are authoritative - the model cannot remove them.
 - **It refuses rather than guesses.** Empty retrieval or a guardrail block raises and is
   audited as BLOCKED; the pipeline never emits a partial, ungrounded or unsafe artifact.
-- **Guardrails hold.** Redact-before-everything, WORM audit, governed Hrz2 retrieval scoped
+- **Guardrails hold.** Redact-before-everything, WORM audit, governed `enterprise-knowledge-base` retrieval scoped
   by the actor's ACL, maker-checker on every review, and a draft that the system never
   sends - a human reviews and sends it (P-06 / R1).
 

@@ -80,7 +80,7 @@ ui-check: ## The console gate: types, CSP unit tests, a real build, then a REAL 
 	npm --prefix $(UI_DIR) run assert-hydratable
 
 run-local: ## End-to-end offline smoke: review a complaint under the local profile.
-	COMPLAINTS_PROFILE=local complaints-review review CMP-LOCAL-001 \
+	COMPLAINTS_PROFILE=local complaints-review CMP-LOCAL-001 \
 		--narrative "The branch sold me a structured investment product I did not understand and I am a vulnerable customer." \
 		--product "structured investment product" --channel branch --received 2026-06-01
 

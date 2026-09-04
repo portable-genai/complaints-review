@@ -163,7 +163,7 @@ adapters:
     local: complaints_review.adapters.local.tool_catalog:LocalToolCatalogAdapter
     onprem: complaints_review.adapters.onprem.tool_catalog:OnPremToolCatalogAdapter
   # Rule R8: a complaint review always requires human review, so the producer routes it to the
-  # Hrz7 Human-Review & Maker-Checker Console rather than terminating in a per-repo boolean.
+  # human-review-console Human-Review & Maker-Checker Console rather than terminating in a per-repo boolean.
   # gcp/platform submit over S2S; local enqueues to an in-memory outbox; onprem is the sovereign
   # placeholder that must be wired to the on-prem console before it can route.
   review_router:

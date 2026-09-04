@@ -12,7 +12,7 @@ the whole stack rebinds by a one-line profile change with no `domain/` edits. **
 audit trail exports to an open, documented JSONL format and reloads elsewhere with the hash
 chain re-verified. **Identity:** identity resolves across hosts by an adapter swap (seeded
 persona / IAP assertion / client-IdP placeholder), not a rewrite. Note that an *executable*
-one-command portability proof (a `scripts/portability_demo.py` behind an exit code, the Doc1
+one-command portability proof (a `scripts/portability_demo.py` behind an exit code, the `cdd-sow-research`
 pattern) is a **known open item**, tracked as check F3 in
 [`docs/practices-audit.md`](../practices-audit.md); today the guarantees are proven by the
 contract tests and the audit export/restore path rather than by a single script.
@@ -66,7 +66,7 @@ that nonetheless satisfy every Protocol and construct with a single `Settings` a
 *interface contract* for a sovereign migration is proven and enforced by CI today. The actual
 on-prem implementations are the migration work, scoped in
 [`docs/onprem-migration.md`](../onprem-migration.md). This repo is not the sovereign-exit
-*planner* (that is the sibling **Rgc9** `operational-resilience-mapping`: APRA CPS 230, MAS/HKMA
+*planner* (that is the sibling `operational-resilience-mapping`: APRA CPS 230, MAS/HKMA
 outsourcing); this repo is one of the systems whose exit that planner reasons about.
 
 ### Does residency compromise portability?
@@ -75,7 +75,7 @@ No: residency is a deploy-time pin (`infra/terraform/` fixes the region to `asia
 with a fail-fast validation, plus CMEK, a VPC-SC perimeter and a WORM log bucket), and
 portability is the ability to change *where* the stack runs by configuration. They are
 orthogonal. A second region or enterprise is a tfvars change, not a fork. Residency
-enforcement overlaps with the sibling **Rsk3** `architecture-validator` (a CI gate for region
+enforcement overlaps with the sibling `architecture-validator` (a CI gate for region
 violations), which a fork should run rather than re-implement; note that an in-repo offline
 Terraform `fmt`/`validate` check is itself a small open item (D5).
 

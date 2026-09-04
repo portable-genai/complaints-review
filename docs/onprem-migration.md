@@ -1,6 +1,6 @@
-# On-prem migration · Doc6 Complaints & Conduct File Review
+# On-prem migration · `complaints-review` Complaints & Conduct File Review
 
-Doc6 is designed so the managed Google Cloud stack can be replaced by an on-premise stack
+`complaints-review` is designed so the managed Google Cloud stack can be replaced by an on-premise stack
 (Google Distributed Cloud, or another sovereign target) **without touching the domain
 core** (P-02, P-12). This document is the migration runbook.
 

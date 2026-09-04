@@ -1,4 +1,4 @@
-"""Contract test: the platform eval adapter speaks A4 (Hrz4)'s hardened wire contract.
+"""Contract test: the platform eval adapter speaks A4 (model-quality-gate)'s hardened wire contract.
 
 The ``platform`` profile delegates the promotion gate to the shared A4
 ``model-quality-gate`` service. This pins the request/response shape the adapter

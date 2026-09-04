@@ -19,7 +19,8 @@ _PERSONA_HEADER = "x-dev-persona"
 
 # Seeded dev personas. Ordered; the first entry is the default when no persona is selected.
 # The persona id is the suffix of ``source`` after the colon. Subjects/tenants mirror the
-# catalog reference (Doc1) so the cross-tenant persona demonstrates per-tenant authZ; the
+# catalog reference (cdd-sow-research) so the cross-tenant persona demonstrates per-tenant authZ;
+# the
 # entitlement GROUP names are this repo's conduct-ops domain.
 _PERSONAS: tuple[Principal, ...] = (
     Principal(

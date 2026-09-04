@@ -1,4 +1,4 @@
-# Doc6 · Complaints & Conduct File Review
+# `complaints-review` · Complaints & Conduct File Review
 
 **Industries:** Banking, Insurance, Telecom, Utilities, Healthcare, Public sector
 
@@ -20,7 +20,7 @@ service formerly called Vertex AI), pinned to **asia-southeast1** (Singapore) fo
 residency. Complaint files carry customer PII, so the **full R1 safety pipeline** runs:
 redact, then guardrail screen on the way in and out, with everything audited to a
 write-once (WORM) store. Policy and regulatory guidance is retrieved from the shared
-**Hrz2 Enterprise Knowledge Base** (governed RAG, rule R3), not a bespoke backend.
+**`enterprise-knowledge-base`** (governed RAG, rule R3), not a bespoke backend.
 
 > This is an engineering-portfolio reference repo. All complaint data here is synthetic
 > and fictional.
@@ -59,7 +59,7 @@ flowchart TB
         LO["SQLite FTS5 retrieval · deterministic LLM ·<br/>regex DLP · heuristic guardrail ·<br/>append-only audit · no-op tracer · local parser"]
     end
     subgraph plat["adapters/platform/*: horizontal-platform HTTP clients"]
-        PL["Remote KB (Hrz2) · Remote Guardrail (Hrz1) ·<br/>Remote Redaction (Hrz1) · Remote Audit (Hrz5) ·<br/>Remote Registry (Hrz3) · Remote Eval (Hrz4)"]
+        PL["Remote KB (`enterprise-knowledge-base`) · Remote Guardrail (`agent-guardrail-gateway`) ·<br/>Remote Redaction (`agent-guardrail-gateway`) · Remote Audit (`agent-observability`) ·<br/>Remote Registry (`agent-registry`) · Remote Eval (`model-quality-gate`)"]
     end
     subgraph onp["adapters/onprem/*: migration stubs"]
         ON["NotImplementedError placeholders<br/>(P-02 / P-12 reversibility)"]
@@ -83,7 +83,7 @@ sequenceDiagram
     participant Red as PIIRedactionPort (DLP)
     participant Grd as GuardrailPort (Model Armor)
     participant Ext as DocumentExtractionPort (Document AI)
-    participant KB as KnowledgeBaseClientPort (Hrz2)
+    participant KB as KnowledgeBaseClientPort (`enterprise-knowledge-base`)
     participant LLM as LLMPort (Gemini 3.5 Flash)
     participant Aud as AuditSinkPort (WORM)
 
@@ -121,7 +121,7 @@ export COMPLAINTS_PROFILE=local   # the WORKING offline profile. Set it delibera
                                   # refused and the localhost CORS fallback does not apply.
 
 make test                         # ruff + pytest on the local profile
-python eval/run_eval.py           # the Hrz4 / P-08 eval gate
+python eval/run_eval.py           # the `model-quality-gate` / P-08 eval gate
 ```
 
 There are four deployment profiles, selected by `COMPLAINTS_PROFILE`:
@@ -130,7 +130,7 @@ There are four deployment profiles, selected by `COMPLAINTS_PROFILE`:
 |---------|----------|------|
 | `local` | SQLite FTS5 retrieval, deterministic LLM, regex DLP, heuristic guardrail, append-only audit, no-op tracer, local parser. No Google Cloud, no API key, no emulators. | Default for dev and test: runs the whole pipeline offline on a laptop. |
 | `gcp` | Document AI, Agent Search, Gemini, Model Armor, DLP, Cloud Logging WORM, Cloud Trace, Gen AI Evals. Needs the `[gcp]` extra (`pip install -e ".[gcp,dev]"`). | Production managed stack. |
-| `platform` | Guardrail, redaction, knowledge-base, audit, registry and eval ports over HTTP to the shared Hrz1 to Hrz5 services (see `.env.example`). | Inside the full platform. |
+| `platform` | Guardrail, redaction, knowledge-base, audit, registry and eval ports over HTTP to the shared `agent-guardrail-gateway` to `agent-observability` services (see `.env.example`). | Inside the full platform. |
 | `onprem` | Fail-fast `NotImplementedError` placeholders. | Google Distributed Cloud migration target (P-02 / P-12). |
 
 ## Run locally (offline, end to end)
@@ -141,7 +141,7 @@ real, page-cited artifact:
 
 ```bash
 export COMPLAINTS_PROFILE=local
-complaints-review review CMP-LOCAL-001 \
+complaints-review CMP-LOCAL-001 \
   --narrative "The branch sold me a structured investment product I did not understand and I am a vulnerable customer." \
   --product "structured investment product" --channel branch --received 2026-06-01
 # or simply:
@@ -161,7 +161,7 @@ no google-cloud package and needs no emulator.
 ## CLI
 
 ```bash
-complaints-review review CMP-1 --narrative "The branch sold me an unsuitable product" \
+complaints-review CMP-1 --narrative "The branch sold me an unsuitable product" \
   --product "investment product" --channel branch
 complaints-review summary CMP-1 --narrative "..."
 complaints-review draft-response CMP-1 --narrative "..."
@@ -185,7 +185,7 @@ local), never from the request body. See
 | `POST /v1/draft-response` | Only the `DraftResponse` (a draft, never sent). |
 | `GET /v1/personas` | Seeded dev personas for the local persona picker (empty outside `local`). |
 | `GET /healthz` | Liveness + active profile + region. |
-| `GET /.well-known/agent-card.json` | A2A AgentCard for discovery (Hrz3). |
+| `GET /.well-known/agent-card.json` | A2A AgentCard for discovery (`agent-registry`). |
 
 ## Repo map
 
@@ -197,14 +197,14 @@ local), never from the request body. See
 | `src/complaints_review/{api,cli,agent}/` | Driving adapters (FastAPI, Typer, ADK). |
 | `config/settings.yaml` | Port to adapter bindings, region, models. |
 | `infra/terraform/` | asia-southeast1 infra (Document AI, DLP, Model Armor, KMS, WORM, IAM, VPC-SC). |
-| `eval/` | The offline Hrz4 / P-08 eval gate + golden set + rubrics. |
+| `eval/` | The offline `model-quality-gate` / P-08 eval gate + golden set + rubrics. |
 | `ui/` | React / Next.js demo console (source only). |
 
 See `SPEC.md`, `ARCHITECTURE.md` and `COMPLIANCE.md` for the detail.
 
 ## Cost and latency
 
-Size this system's cost and latency with the shared interactive calculator: [**live**](https://portable-genai.github.io/cost-latency-calculator/calc/calculator.html?system=Doc6) or the [in-repo page](cost-latency-calculator.html). The engine and the pricing book are maintained once in [cost-latency-calculator](https://github.com/portable-genai/cost-latency-calculator).
+Size this system's cost and latency with the shared interactive calculator: [**live**](https://portable-genai.github.io/cost-latency-calculator/calc/calculator.html?system=complaints-review) or the [in-repo page](cost-latency-calculator.html). The engine and the pricing book are maintained once in [cost-latency-calculator](https://github.com/portable-genai/cost-latency-calculator).
 
 ## Documentation authority
 
