@@ -33,7 +33,6 @@ from agent_eval_kit import assert_can_go_red
 from eval.run_eval import (
     _PII_BY_JURISDICTION,
     DEFAULT_DATASET,
-    THRESHOLDS,
     FakeAuditSink,
     GoldenExample,
     _build_adapters,
@@ -41,6 +40,7 @@ from eval.run_eval import (
     _planted_narrative,
     _to_file,
     load_golden,
+    load_thresholds_from_rubrics,
     score_categorisation,
     score_citation_accuracy,
     score_groundedness,
@@ -48,6 +48,10 @@ from eval.run_eval import (
 )
 
 from complaints_review.domain.models import Citation, ComplaintReview, SourceType
+
+#: The reviewed bars, read from `eval/rubrics/*.yaml` exactly as the gate reads them. The
+#: module-level dict this used to import is gone: having both was two homes for one number.
+THRESHOLDS = load_thresholds_from_rubrics()
 
 _GOLDEN = load_golden(DEFAULT_DATASET)
 #: A case that plants a market identifier, so pii_safety has a target it could miss.
@@ -138,3 +142,33 @@ def test_pii_safety_can_go_red() -> None:
         threshold=THRESHOLDS["pii_safety"],
         metric="pii_safety",
     )
+
+
+def test_the_scored_run_refuses_a_metric_that_became_a_constant() -> None:
+    """The ordering IS the guarantee: falsification runs before a single golden score.
+
+    Run only here, a proof says the metric could have gone red in this process. Run as the first
+    statement of ``run_offline``, it says the metric about to score this corpus can go red,
+    against the thresholds that run just loaded from the rubrics.
+    """
+    from agent_eval_kit.harness import NotFalselyGreenError
+    from eval import run_eval
+
+    original = run_eval.score_groundedness
+    run_eval.score_groundedness = lambda review: 1.0  # type: ignore[assignment]
+    try:
+        with pytest.raises(NotFalselyGreenError, match="groundedness: FALSELY GREEN"):
+            run_eval.run_offline(DEFAULT_DATASET, run_eval.load_thresholds_from_rubrics())
+    finally:
+        run_eval.score_groundedness = original  # type: ignore[assignment]
+
+
+def test_every_scored_metric_has_a_reviewed_bar_and_every_bar_is_scored() -> None:
+    """Both directions. Two of the four metrics had no rubric at all before this."""
+    from agent_eval_kit import load_rubrics
+    from agent_eval_kit.rubrics import RubricError
+    from eval.run_eval import RUBRICS, SCORED
+
+    load_rubrics(RUBRICS).assert_covers(SCORED)
+    with pytest.raises(RubricError, match="reads as governance"):
+        load_rubrics(RUBRICS).assert_covers(SCORED[:-1])

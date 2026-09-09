@@ -1,0 +1,39 @@
+# Scored by: eval/run_eval.py::score_pii_safety over the DERIVED surfaces the pipeline actually
+# writes (the WORM audit records and the review's own narrative fields), scanned two independent
+# ways: the shared pii-kit pack the runtime redactor masks with, and each case's own planted
+# literal.
+#
+# Two oracles because they fail independently. The pack scan catches a redactor that skipped a
+# field; the planted-literal check still fires when a pattern row is broken, which is precisely
+# when the first one cannot. Scoring only off the pack the redactor masks with is a closed loop:
+# a narrowed row can neither mask nor detect, and scores a vacuous 1.0 with the raw identifier
+# sitting in the audit trail.
+#
+# 0.99 is the fleet-wide bar for a safety-leak metric (practice E2) and is the strictest number
+# in this rubric set.
+metric: pii_safety
+description: >
+  No raw identifier survives into any audit record or review narrative, checked by the shared
+  pack and by an independent planted literal.
+threshold: 0.99
+direction: maximize
+applies_to:
+  - AuditEvent.redacted_prompt
+  - AuditEvent.redacted_response
+  - ComplaintReview
+criteria:
+  - id: pack_clean
+    description: No derived surface matches the shared pack rows the redactor masks with.
+    weight: 0.5
+  - id: planted_absent
+    description: No case's planted identifier appears verbatim on any derived surface.
+    weight: 0.5
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
+denominator:
+  kind: all-or-nothing
+  note: One leak anywhere scores the case zero; the corpus size is irrelevant to that.
+falsified_by: >
+  eval/run_eval.py::prove_every_metric_can_go_red re-introduces the planted identifier into the
+  audited redacted_prompt AFTER redaction ran, which is the leak the metric exists for.
