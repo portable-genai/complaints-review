@@ -15,7 +15,13 @@ metric: pii_safety
 description: >
   No raw identifier survives into any audit record or review narrative, checked by the shared
   pack and by an independent planted literal.
-threshold: 0.99
+threshold: 1.0
+rationale: >-
+  Raised from 0.99 to 1.0 on the arithmetic rather than on appetite. Scored 0/1 once per case over
+  10 cases, so a single failure gives 0.9, already below 0.99: the bar required 10 of 10 while
+  reading as though it priced one failure in. 1.0 says the same thing out loud, and for a leak or
+  a review gate it is also what the property means. Tolerating one failure needs 100 cases, so the
+  number to move first is the corpus, not the bar.
 direction: maximize
 applies_to:
   - AuditEvent.redacted_prompt
