@@ -51,7 +51,14 @@ from pathlib import Path
 # The --mode smoke|gate scaffold + aligned report rendering come from the shared
 # agent-eval-kit commons; this script keeps only its own offline
 # evaluator and gate runner.
-from agent_eval_kit import eval_main
+from agent_eval_kit import (
+    assert_can_go_red,
+    assert_denominator_supports,
+    dataset_digest,
+    eval_main,
+    load_rubrics,
+    prove_before_scoring,
+)
 from pii_kit import UNIVERSAL_PATTERNS, national_patterns_for, pack_leak, planted_leak
 from pii_kit.patterns import Pattern
 
@@ -80,14 +87,13 @@ from complaints_review.domain.models import (
 # --------------------------------------------------------------------------- #
 # Thresholds : the promotion bar (SPEC A4 / P-08). Mirrors eval/rubrics/*.yaml.
 # --------------------------------------------------------------------------- #
-THRESHOLDS: dict[str, float] = {
-    "categorisation_accuracy": 0.85,
-    "groundedness": 0.80,
-    "citation_accuracy": 0.90,
-    "pii_safety": 0.99,
-}
+#: Where every bar lives. Not a dict here: a threshold written as a Python literal carries no
+#: argument. The rubric files carry the reasoning beside the number, and
+#: `agent_eval_kit.load_rubrics` reads them. What was here before was BOTH a dict and a loader
+#: that overlaid two rubric files on top of it, falling back to the dict when PyYAML was missing.
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
+RUBRICS = _REPO_ROOT / "eval" / "rubrics"
 DEFAULT_DATASET = _REPO_ROOT / "eval" / "datasets" / "golden_complaints.jsonl"
 
 # The jurisdictions the pii_safety gate exercises. MUST match the redactor's configured set
@@ -173,26 +179,18 @@ def load_golden(path: Path) -> list[GoldenExample]:
 
 
 def load_thresholds_from_rubrics() -> dict[str, float]:
-    """Read thresholds from ``eval/rubrics/*.yaml`` when PyYAML is available."""
-    thresholds = dict(THRESHOLDS)
-    try:
-        import yaml  # type: ignore[import-untyped]
-    except ImportError:
-        return thresholds
+    """Read every metric's reviewed bar out of ``eval/rubrics/*.yaml``. No fallback, by design."""
+    return load_rubrics(RUBRICS).thresholds()
 
-    rubric_dir = _REPO_ROOT / "eval" / "rubrics"
-    for name in ("categorisation_accuracy.yaml", "groundedness.yaml"):
-        rubric_path = rubric_dir / name
-        if not rubric_path.exists():
-            continue
-        doc = yaml.safe_load(rubric_path.read_text(encoding="utf-8")) or {}
-        metric = doc.get("metric")
-        if isinstance(metric, str) and "threshold" in doc:
-            thresholds[metric] = float(doc["threshold"])
-        for companion, spec in (doc.get("companion_metrics") or {}).items():
-            if isinstance(spec, dict) and "threshold" in spec:
-                thresholds[str(companion)] = float(spec["threshold"])
-    return thresholds
+
+#: The metrics this runner scores, in report order. Named so `assert_covers` can compare them
+#: with the rubric set in BOTH directions.
+SCORED: tuple[str, ...] = (
+    "categorisation_accuracy",
+    "groundedness",
+    "citation_accuracy",
+    "pii_safety",
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -542,11 +540,104 @@ class _PerMetric:
         return sum(self.scores) / len(self.scores) if self.scores else 0.0
 
 
+def prove_every_metric_can_go_red(thresholds: dict[str, float]) -> None:
+    """All four metrics, shown failing the defect each exists to catch, inside the scored run.
+
+    This repository shipped four gated metrics and no falsification proof at all until recently,
+    which is the one gap that makes every other green result unreadable. The proofs live here
+    rather than only in ``tests/`` for the reason the ordering exists: run in a test suite, a
+    proof says the metric COULD have gone red on some machine at some point; run as the first
+    statement of the scored run, it says the metric about to score this corpus can go red, in
+    this process, against the thresholds this process just loaded from the rubrics.
+
+    Each degraded case mutates the OUTPUT the scorer reads. Nothing re-implements a scorer, so a
+    scorer that stopped working breaks this rather than passing a copy of itself.
+    """
+    import copy
+    from dataclasses import replace
+
+    from complaints_review.domain.models import Citation, SourceType
+
+    examples = load_golden(DEFAULT_DATASET)
+    with_citations = next(e for e in examples if e.must_cite_source_ids)
+    with_pii = next(e for e in examples if e.pii_jurisdiction)
+
+    adapters = _build_adapters(examples)
+    audit = FakeAuditSink()
+    service = _make_service(adapters, audit)
+    review = service.review(
+        _to_file(with_citations, _planted_narrative(with_citations)), actor="eval-bot"
+    )
+
+    wrong = next(
+        value
+        for value in ("mis-selling", "service-failure", "fees-and-charges", "fraud")
+        if value != with_citations.expected_category
+    )
+    assert_can_go_red(
+        lambda example: score_categorisation(review, example),
+        green=with_citations,
+        red=replace(with_citations, expected_category=wrong),
+        threshold=thresholds["categorisation_accuracy"],
+        metric="categorisation_accuracy",
+    )
+    assert_can_go_red(
+        score_groundedness,
+        green=review,
+        # A category asserted with nothing behind it.
+        red=replace(review, categorization=replace(review.categorization, citations=())),
+        threshold=thresholds["groundedness"],
+        metric="groundedness",
+    )
+    invented = Citation(
+        source_id="KB-DOES-NOT-EXIST",
+        source_type=SourceType.POLICY,
+        title="A policy this bank has never published",
+        snippet="Cited, plausible, and not in the knowledge base.",
+    )
+    assert_can_go_red(
+        lambda candidate: score_citation_accuracy(candidate, with_citations),
+        green=review,
+        # A REAL-looking citation pointing at nothing, which a presence check could not catch.
+        red=replace(review, categorization=replace(review.categorization, citations=(invented,))),
+        threshold=thresholds["citation_accuracy"],
+        metric="citation_accuracy",
+    )
+
+    pii_audit = FakeAuditSink()
+    pii_service = _make_service(adapters, pii_audit)
+    pii_review = pii_service.review(
+        _to_file(with_pii, _planted_narrative(with_pii)), actor="eval-bot"
+    )
+    events = list(pii_audit.events)
+    leaked = copy.copy(events[0])
+    identifier = _PII_BY_JURISDICTION[with_pii.pii_jurisdiction]
+    object.__setattr__(
+        leaked,
+        "redacted_prompt",
+        f"{getattr(leaked, 'redacted_prompt', '') or ''} customer identifier {identifier}",
+    )
+    assert_can_go_red(
+        lambda audit_events: score_pii_safety(pii_review, with_pii, audit_events),
+        green=events,
+        red=[leaked, *events[1:]],
+        threshold=thresholds["pii_safety"],
+        metric="pii_safety",
+    )
+
+
 def run_offline(dataset: Path, thresholds: dict[str, float]) -> EvalReport:
+    # The rubrics and the scored set must agree in BOTH directions before anything is scored.
+    load_rubrics(RUBRICS).assert_covers(SCORED)
+    # And each metric must be shown able to go red, here, with these thresholds. The proofs are
+    # the ones tests/unit/test_not_falsely_green.py runs; running them HERE means the guarantee
+    # holds in the process that scores the corpus rather than only on some machine.
+    prove_before_scoring(lambda: prove_every_metric_can_go_red(thresholds))
     examples = load_golden(dataset)
     adapters = _build_adapters(examples)
 
-    agg: dict[str, _PerMetric] = {m: _PerMetric() for m in THRESHOLDS}
+    agg: dict[str, _PerMetric] = {metric: _PerMetric() for metric in SCORED}
+    produced: dict[str, int] = {"citations": 0}
     print(
         f"Running offline eval gate over {len(examples)} golden examples "
         "(evaluator=ComplaintReviewService).\n"
@@ -559,18 +650,35 @@ def run_offline(dataset: Path, thresholds: dict[str, float]) -> EvalReport:
         agg["categorisation_accuracy"].scores.append(score_categorisation(review, example))
         agg["groundedness"].scores.append(score_groundedness(review))
         agg["citation_accuracy"].scores.append(score_citation_accuracy(review, example))
+        # The denominator citation_accuracy is measured over. It cannot be read off the
+        # dataset: what a review cites is what the run produces.
+        produced["citations"] += len(_all_cited_ids(review))
         agg["pii_safety"].scores.append(score_pii_safety(review, example, audit.events))
 
     results = tuple(
         EvalMetricResult(
             metric=metric,
             score=round(agg[metric].mean, 4),
-            threshold=thresholds.get(metric, THRESHOLDS[metric]),
-            passed=round(agg[metric].mean, 4) >= thresholds.get(metric, THRESHOLDS[metric]),
+            threshold=thresholds[metric],
+            passed=round(agg[metric].mean, 4) >= thresholds[metric],
         )
-        for metric in ("categorisation_accuracy", "groundedness", "citation_accuracy", "pii_safety")
+        for metric in SCORED
     )
-    return EvalReport(dataset=str(dataset), results=results, n_examples=len(examples))
+    # And the corpus must be able to express every bar that claims a rate. citation_accuracy is
+    # a fraction over the CITATIONS a review carries, not over ten complaints, and ten complaints
+    # would not have supported its 0.90 bar.
+    for metric in ("categorisation_accuracy", "groundedness"):
+        assert_denominator_supports(thresholds[metric], len(examples), metric=metric)
+    assert_denominator_supports(
+        thresholds["citation_accuracy"], produced["citations"], metric="citation_accuracy"
+    )
+    return EvalReport(
+        dataset=str(dataset),
+        results=results,
+        n_examples=len(examples),
+        dataset_digest=dataset_digest(dataset),
+        evaluator="offline heuristic (no cloud creds)",
+    )
 
 
 def run_gate(dataset: Path) -> tuple[EvalReport, bool]:

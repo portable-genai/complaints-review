@@ -59,10 +59,16 @@ test: ## Run unit + contract tests on the local profile (no GCP SDK required).
 eval: ## Run the A4 eval gate (categorisation / groundedness / citations / pii_safety).
 	$(PYTHON) eval/run_eval.py
 
+evals-doc: ## Regenerate docs/evals.md from the rubrics and the golden set.
+	$(PYTHON) scripts/render_evals_doc.py
+
+evals-doc-check: ## Fail when docs/evals.md and the artifacts it describes disagree.
+	$(PYTHON) scripts/render_evals_doc.py --check
+
 portability: ## Execute the bounded offline/profile portability proof.
 	PYTHONPATH=src $(PYTHON) scripts/portability_demo.py
 
-check: lint test eval demo-selftest portability ## The full offline Python gate. Must be green to land.
+check: lint test eval evals-doc-check demo-selftest portability ## The full offline Python gate. Must be green to land.
 
 demo-selftest: ## Prove the real presenter states and evidence hooks cannot rot silently.
 	PYTHONPATH=src:tests:scripts $(PYTHON) scripts/demo_selftest.py

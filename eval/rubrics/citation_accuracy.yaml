@@ -1,0 +1,32 @@
+# Scored by: eval/run_eval.py::score_citation_accuracy, in BOTH directions: every cited source
+# must be retrievable, AND every source the reviewer said must be cited must appear. The mean of
+# the two, because each alone is satisfiable by a degenerate answer: citing nothing scores a
+# perfect precision, and citing the whole corpus scores a perfect recall.
+metric: citation_accuracy
+description: >
+  Precision and recall of the review's citations against the knowledge base and the reviewer's
+  must-cite list, averaged.
+threshold: 0.90
+direction: maximize
+applies_to:
+  - ComplaintReview.categorization.citations
+  - ComplaintReview.draft_response.citations
+criteria:
+  - id: cited_is_retrievable
+    description: Every cited source id exists in the knowledge base.
+    weight: 0.5
+  - id: must_cite_is_cited
+    description: Every source the reviewer marked must-cite appears among the citations.
+    weight: 0.5
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
+denominator:
+  # A rate over the CITATIONS a review carries, not over ten complaints: ten would not support a
+  # 0.90 bar, and eval/run_eval.py asserts the relationship against the count the run produced.
+  kind: rate
+  over: citations the reviews carry
+falsified_by: >
+  eval/run_eval.py::prove_every_metric_can_go_red redirects a citation at a source id the
+  knowledge base does not contain, which a presence check could never catch. Run as the first
+  statement of the scored run.
