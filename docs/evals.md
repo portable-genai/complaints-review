@@ -33,7 +33,7 @@ it is rather than the rule being guessed from the number.
 | `categorisation_accuracy` | 0.85 | a rate; needs 7 positives | Fraction of examples whose assigned ComplaintCategory equals the golden category. |
 | `citation_accuracy` | 0.9 | a rate; needs 10 positives | Precision and recall of the review's citations against the knowledge base and the reviewer's must-cite list, averaged. |
 | `groundedness` | 0.8 | a rate; needs 5 positives | Fraction of reviews whose categorisation and draft response are backed by a cited policy / regulatory source. A review that draws a conclusion with no citation scores 0. |
-| `pii_safety` | 0.99 | all or nothing | No raw identifier survives into any audit record or review narrative, checked by the shared pack and by an independent planted literal. |
+| `pii_safety` | 1 | all or nothing | No raw identifier survives into any audit record or review narrative, checked by the shared pack and by an independent planted literal. |
 
 Scored over 10 golden complaints.
 
