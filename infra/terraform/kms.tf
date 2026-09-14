@@ -10,6 +10,7 @@
 #         global/multi-region key. Regional CMEK pins crypto material in-country.
 
 resource "google_kms_key_ring" "complaints" {
+  count    = var.cmek_enabled ? 1 : 0
   name     = "complaints-review-ring"
   location = var.region # asia-southeast1 : regional, in-country key material (P-03)
 
@@ -17,8 +18,9 @@ resource "google_kms_key_ring" "complaints" {
 }
 
 resource "google_kms_crypto_key" "complaints" {
+  count    = var.cmek_enabled ? 1 : 0
   name     = "complaints-review-cmek"
-  key_ring = google_kms_key_ring.complaints.id
+  key_ring = one(google_kms_key_ring.complaints[*].id)
 
   purpose         = "ENCRYPT_DECRYPT"
   rotation_period = "7776000s" # 90 days : periodic rotation for key hygiene
@@ -44,21 +46,24 @@ data "google_project" "this" {
 
 # Document AI service agent.
 resource "google_kms_crypto_key_iam_member" "documentai" {
-  crypto_key_id = google_kms_crypto_key.complaints.id
+  count         = var.cmek_enabled ? 1 : 0
+  crypto_key_id = one(google_kms_crypto_key.complaints[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-prod-dai-core.iam.gserviceaccount.com"
 }
 
 # Vertex AI / Agent Runtime service agent.
 resource "google_kms_crypto_key_iam_member" "aiplatform" {
-  crypto_key_id = google_kms_crypto_key.complaints.id
+  count         = var.cmek_enabled ? 1 : 0
+  crypto_key_id = one(google_kms_crypto_key.complaints[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-aiplatform.iam.gserviceaccount.com"
 }
 
 # Cloud Logging service agent (CMEK on the WORM bucket).
 resource "google_kms_crypto_key_iam_member" "logging" {
-  crypto_key_id = google_kms_crypto_key.complaints.id
+  count         = var.cmek_enabled ? 1 : 0
+  crypto_key_id = one(google_kms_crypto_key.complaints[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-logging.iam.gserviceaccount.com"
 }
