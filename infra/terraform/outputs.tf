@@ -27,7 +27,7 @@ output "documentai_location" {
 # --------------------------------- KMS -------------------------------------- #
 output "kms_key" {
   description = "Regional CMEK crypto key id (settings.yaml kms_key / COMPLAINTS_KMS_KEY)."
-  value       = google_kms_crypto_key.complaints.id
+  value       = one(google_kms_crypto_key.complaints[*].id)
 }
 
 # ------------------------------- WORM logging ------------------------------- #
