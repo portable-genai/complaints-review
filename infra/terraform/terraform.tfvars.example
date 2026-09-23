@@ -27,3 +27,8 @@ org_id = "000000000000"
 
 # Create the VPC-SC perimeter. Apply once with false, add your CI identity, then set true.
 enable_vpc_sc = false
+
+# The WORM lock has NO default: a plan refuses until it is stated here. true is the compliant
+# production form and is IRREVERSIBLE for the retention window; an evaluation stack that must
+# stay destroyable states false (NOT compliant).
+worm_locked = true
