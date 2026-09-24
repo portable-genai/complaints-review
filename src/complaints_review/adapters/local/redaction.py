@@ -29,6 +29,14 @@ from pii_kit.patterns import Pattern
 from ...config import Settings
 from ...domain.models import RedactionFinding, RedactionResult
 
+#: The phone rows (universal and SG) would take an eight-digit amount for a phone number:
+#: "charged SGD 90000000" reached the model as "charged SGD [SG_PHONE]". A match directly after
+#: a currency code or symbol is an amount, so those rows leave it intact.
+_PHONE_INFO_TYPES = frozenset({"PHONE_NUMBER", "SG_PHONE"})
+_AFTER_A_CURRENCY = re.compile(
+    r"(?:[$€£¥]|\b(?:SGD|USD|HKD|AUD|JPY|EUR|GBP|CNY|CHF|S\$|US\$|HK\$|A\$))\s?$"
+)
+
 
 class LocalRegexRedactionAdapter:
     """Mask configured-jurisdiction national ids plus email/phone, like DLP de-identify."""
@@ -54,6 +62,8 @@ class LocalRegexRedactionAdapter:
             ) -> str:
                 if _val is not None and not _val(m.group(0)):
                     return m.group(0)  # checksum fail: not a real identifier, leave it
+                if _it in _PHONE_INFO_TYPES and _AFTER_A_CURRENCY.search(m.string, 0, m.start()):
+                    return m.group(0)  # an amount after a currency marker, not a phone number
                 counts[_it] = counts.get(_it, 0) + 1
                 return f"[{_it}]"
 

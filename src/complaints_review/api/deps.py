@@ -14,7 +14,11 @@ knows which ports the service needs.
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Annotated, Any
 
+from fastapi import Depends
+
+from ..adapters.controls import DisclosingRedaction, RecordingReviewRouter
 from ..config import Container, Settings, build_container
 from ..domain.models import ConductFlagKind, Severity
 from ..domain.policy import ComplaintPolicy
@@ -41,13 +45,41 @@ def get_settings() -> Settings:
 # Service factory : assemble the review service from the Container's ports.
 # Constructor argument order mirrors SPEC §5 exactly.
 # --------------------------------------------------------------------------- #
-def get_review_service() -> ComplaintReviewService:
+def get_request_redaction() -> DisclosingRedaction:
+    """The redaction adapter for ONE request, wrapped so the response can disclose a change.
+
+    FastAPI resolves a dependency once per request, so the route and the service it builds
+    receive the same wrapper and the route reads what the service's redaction did.
+    """
+    return DisclosingRedaction(get_container().redaction)
+
+
+def get_request_review_router() -> RecordingReviewRouter:
+    """The review router for ONE request, wrapped so the response reports the hand-off."""
+    return RecordingReviewRouter(get_container().review_router)
+
+
+#: Injected by FastAPI; ``None`` when a getter is called directly, which binds the
+#: container's adapters unwrapped.
+RequestRedaction = Annotated[DisclosingRedaction | None, Depends(get_request_redaction)]
+RequestReviewRouter = Annotated[RecordingReviewRouter | None, Depends(get_request_review_router)]
+
+
+def get_review_service(
+    redaction: RequestRedaction = None, review_router: RequestReviewRouter = None
+) -> ComplaintReviewService:
     """ComplaintReviewService(extraction, knowledge_base, llm, guardrail, redaction, ...)."""
-    return build_review_service(get_container())
+    return build_review_service(get_container(), redaction=redaction, review_router=review_router)
 
 
-def build_review_service(container: Container) -> ComplaintReviewService:
-    """Assemble a :class:`ComplaintReviewService` from an explicit Container."""
+def build_review_service(
+    container: Container, *, redaction: Any = None, review_router: Any = None
+) -> ComplaintReviewService:
+    """Assemble a :class:`ComplaintReviewService` from an explicit Container.
+
+    ``redaction`` and ``review_router`` replace the container's adapters for this one service,
+    which is how a caller hands it the per-call wrappers and reports what they saw afterwards.
+    """
     configured = container.settings.policy
     policy = ComplaintPolicy(
         deadline_days=configured.deadline_days,
@@ -60,10 +92,10 @@ def build_review_service(container: Container) -> ComplaintReviewService:
         knowledge_base=container.knowledge_base,
         llm=container.llm,
         guardrail=container.guardrail,
-        redaction=container.redaction,
+        redaction=redaction or container.redaction,
         tracer=container.tracer,
         audit=container.audit,
-        review_router=container.review_router,
+        review_router=review_router or container.review_router,
         complaint_policy=policy,
     )
 

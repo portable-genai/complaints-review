@@ -8,7 +8,7 @@ is regional (``projects/{project}/locations/{region}``) to keep inspection insid
 Singapore for MAS/HKMA/APRA/FSA residency.
 
 If inspect/de-identify templates are configured in settings, they are used as-is.
-Otherwise the adapter builds an inline configuration that masks the info types most
+Otherwise the adapter builds an inline configuration that replaces the info types most
 relevant to APAC retail banking : names, emails, phone numbers, card numbers, IBANs, and
 a custom Singapore NRIC/FIN detector.
 
@@ -41,7 +41,20 @@ _DEFAULT_INFO_TYPES: tuple[str, ...] = (
 # returns the lookaround-free equivalent. Sharing pii-kit keeps this detector in step with the
 # local redactor and the eval leak-check instead of drifting as a private copy would.
 
-_MASKING_CHAR = "#"
+# Tuned against false positives (runtime-control contract, 2026-09-24). A complaint names
+# regulators, dispute schemes, payment rails and products, and at POSSIBLE likelihood DLP could
+# take "Financial Ombudsman" or "Mastercard" for a person and mask it, so the model summarised
+# and drafted against a complaint the customer did not write. Three changes: only LIKELY
+# findings are masked; a match is REPLACED with its info-type name rather than a run of mask
+# characters, so the model still reads the shape of the complaint; and a PERSON_NAME finding
+# containing this domain's own vocabulary is excluded.
+_MIN_LIKELIHOOD = "LIKELY"
+_DOMAIN_VOCABULARY_REGEX = (
+    r"(?i)\b(MAS|HKMA|APRA|ASIC|AFCA|JFSA|FSA|FCA|FIDReC|FDRC|FOS|Financial Ombudsman|"
+    r"Ombudsman|Monetary Authority|Notice|Guidelines?|Consumer Duty|Fair Dealing|"
+    r"Treating Customers Fairly|TCF|Code of Banking Practice|PayNow|PayLah|GIRO|FAST|NETS|"
+    r"Visa|Mastercard|Amex|American Express|UnionPay|SWIFT|Octopus|FPS)\b"
+)
 
 
 class DlpRedactionAdapter:
@@ -120,7 +133,9 @@ class DlpRedactionAdapter:
             {
                 "info_type": {"name": name},
                 "regex": {"pattern": "|".join(f"(?:{p})" for p in patterns)},
-                "likelihood": "POSSIBLE",
+                # A national-id shape is a finding in its own right; it must clear the LIKELY
+                # floor below or no identifier would ever be masked.
+                "likelihood": "VERY_LIKELY",
             }
             for name, patterns in by_name.items()
         ]
@@ -131,13 +146,26 @@ class DlpRedactionAdapter:
         return {
             "info_types": info_types,
             "custom_info_types": self._custom_info_types(),
-            "min_likelihood": "POSSIBLE",
+            "rule_set": [
+                {
+                    "info_types": [{"name": "PERSON_NAME"}],
+                    "rules": [
+                        {
+                            "exclusion_rule": {
+                                "regex": {"pattern": _DOMAIN_VOCABULARY_REGEX},
+                                "matching_type": "MATCHING_TYPE_PARTIAL_MATCH",
+                            }
+                        }
+                    ],
+                }
+            ],
+            "min_likelihood": _MIN_LIKELIHOOD,
             "include_quote": False,
         }
 
     def _inline_deidentify_config(self) -> dict[str, Any]:
-        # Mask every detected info type (built-in + the pack's national-id custom types) with a
-        # single masking character : irreversible, no surrogate to reverse.
+        # Replace every detected info type (built-in + the pack's national-id custom types) with
+        # its name, e.g. "[PERSON_NAME]": irreversible, and the model still reads the complaint.
         # verify: https://cloud.google.com/dlp/docs/reference/rest/v2/DeidentifyConfig
         all_info_types = [{"name": name} for name in _DEFAULT_INFO_TYPES] + [
             {"name": name} for name in self._custom_info_type_names()
@@ -147,11 +175,7 @@ class DlpRedactionAdapter:
                 "transformations": [
                     {
                         "info_types": all_info_types,
-                        "primitive_transformation": {
-                            "character_mask_config": {
-                                "masking_character": _MASKING_CHAR,
-                            }
-                        },
+                        "primitive_transformation": {"replace_with_info_type_config": {}},
                     }
                 ]
             }

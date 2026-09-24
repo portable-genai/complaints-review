@@ -53,6 +53,9 @@ export interface DraftResponse {
   is_draft: boolean;
 }
 
+/** What happened to the human-review hand-off for one response. */
+export type ReviewRouting = "routed" | "failed" | "off" | "not_required";
+
 export interface ComplaintReview {
   file_id: string;
   summary: ComplaintSummary;
@@ -61,6 +64,9 @@ export interface ComplaintReview {
   draft_response: DraftResponse | null;
   requires_human_review: boolean;
   generated_at: string;
+  /** Redaction changed the complaint before the model saw it. */
+  input_redacted?: boolean;
+  review_routing?: ReviewRouting;
 }
 
 export interface ComplaintFileInput {

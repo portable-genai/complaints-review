@@ -45,6 +45,11 @@ over S2S to the sibling `human-review-console` under `gcp`/`platform`
 path runs offline; and `onprem` is the sovereign placeholder
 (`ports/review_router.py`, `adapters/{local,platform,onprem}/review_router.py`). Proven by
 `tests/unit/test_review_routing.py`.
+Every review response says what happened to that hand-off (`review_routing`: `routed`,
+`failed`, `off` or `not_required`), so a review that could not reach the console is never
+read as queued. A deployment can switch routing off with `COMPLAINTS_REVIEW_ROUTING=off`,
+which the response also reports; with routing on, a `gcp` or `platform` process refuses to
+start without `HUMAN_REVIEW_URL`.
 
 ### Which capabilities does this repo own vs integrate from the catalog?
 

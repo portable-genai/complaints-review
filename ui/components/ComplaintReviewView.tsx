@@ -3,13 +3,17 @@
 import type { ComplaintReview } from "../lib/types";
 import { CitationList } from "./CitationCard";
 import { ConductFlagBadge, SeverityPill } from "./SeverityBadge";
-import { Empty, Panel, ReviewBanner } from "./ui";
+import { Empty, Panel, RedactionNotice, ReviewBanner } from "./ui";
 
 export function ComplaintReviewView({ review }: { review: ComplaintReview }) {
   const { summary, categorization, conduct_flags, draft_response } = review;
   return (
     <div className="space-y-4">
-      <ReviewBanner requiresReview={review.requires_human_review} />
+      <ReviewBanner
+        requiresReview={review.requires_human_review}
+        routing={review.review_routing}
+      />
+      {review.input_redacted ? <RedactionNotice /> : null}
 
       <Panel title="Summary">
         <p className="mb-2 text-sm text-ink-800">{summary.issue}</p>
