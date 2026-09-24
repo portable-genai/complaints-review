@@ -87,12 +87,16 @@ def review_complaint(
       actor: Authenticated user / service identity the request is made for.
 
     Returns:
-      A JSON-safe ``ComplaintReview`` dict.
+      A JSON-safe ``ComplaintReview`` dict, plus ``review_routing``: whether the review was
+      sent to the review console (``routed``), could not be (``failed``), or routing is
+      switched off (``off``).
     """
+    from ..adapters.controls import RecordingReviewRouter
     from ..domain.serialization import to_jsonable
     from ..domain.services import ComplaintReviewService
 
     c = _container(settings)
+    routing = RecordingReviewRouter(c.review_router)
     service = ComplaintReviewService(
         extraction=c.extraction,
         knowledge_base=c.knowledge_base,
@@ -101,10 +105,12 @@ def review_complaint(
         redaction=c.redaction,
         tracer=c.tracer,
         audit=c.audit,
-        review_router=c.review_router,
+        review_router=routing,
     )
     file = _file(file_id, narrative, product, channel, received_date, customer_ref)
-    return to_jsonable(service.review(file, actor))
+    payload: dict[str, Any] = to_jsonable(service.review(file, actor))
+    payload["review_routing"] = routing.outcome.value
+    return payload
 
 
 def categorise(

@@ -13,12 +13,15 @@ domain models, the ports, and the orchestration service : never on a concrete ad
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, Field
 
 from ..domain import models as m
 from ..domain.serialization import to_jsonable
+
+#: The four outcomes of a human-review hand-off, as the API reports them.
+ReviewRoutingValue = Literal["routed", "failed", "off", "not_required"]
 
 
 # --------------------------------------------------------------------------- #
@@ -98,7 +101,7 @@ class ComplaintSummaryModel(BaseModel):
     citations: list[CitationModel] = Field(default_factory=list)
 
     @classmethod
-    def from_domain(cls, summary: m.ComplaintSummary) -> ComplaintSummaryModel:
+    def from_domain(cls, summary: m.ComplaintSummary) -> Self:
         return cls(
             issue=summary.issue,
             products=list(summary.products),
@@ -164,7 +167,7 @@ class DraftResponseModel(BaseModel):
     is_draft: bool = True
 
     @classmethod
-    def from_domain(cls, draft: m.DraftResponse) -> DraftResponseModel:
+    def from_domain(cls, draft: m.DraftResponse) -> Self:
         return cls(
             body=draft.body,
             tone=draft.tone,
@@ -185,6 +188,11 @@ class ComplaintReviewModel(BaseModel):
     requires_human_review: bool = True
     generated_at: str = ""
 
+    #: Redaction changed the complaint before the model saw it; the console says so.
+    input_redacted: bool = False
+    #: What happened to the human-review hand-off: routed, failed, off or not_required.
+    review_routing: ReviewRoutingValue = "not_required"
+
     @classmethod
     def from_domain(cls, review: m.ComplaintReview) -> ComplaintReviewModel:
         return cls(
@@ -200,6 +208,27 @@ class ComplaintReviewModel(BaseModel):
             requires_human_review=review.requires_human_review,
             generated_at=to_jsonable(review.generated_at),
         )
+
+
+class ComplaintSummaryResponse(ComplaintSummaryModel):
+    """``POST /v1/summary``: the summary, plus what the controls did to the request.
+
+    A subclass rather than a field on :class:`ComplaintSummaryModel`, because that model is
+    also nested inside the full review, where a per-request disclosure has no meaning.
+    """
+
+    #: Redaction changed the complaint before the model saw it; the console says so.
+    input_redacted: bool = False
+
+
+class DraftResponseResult(DraftResponseModel):
+    """``POST /v1/draft-response``: the draft, plus what the controls did to the request.
+
+    A subclass for the same reason as :class:`ComplaintSummaryResponse`.
+    """
+
+    #: Redaction changed the complaint before the model saw it; the console says so.
+    input_redacted: bool = False
 
 
 # --------------------------------------------------------------------------- #

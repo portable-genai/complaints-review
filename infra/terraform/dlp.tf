@@ -50,7 +50,25 @@ resource "google_data_loss_prevention_inspect_template" "complaints" {
       }
     }
 
-    min_likelihood = "POSSIBLE"
+    # Tuned against false positives (runtime-control contract, 2026-09-24): a complaint names
+    # regulators, dispute schemes, payment rails and products, which POSSIBLE took for people.
+    # Only LIKELY findings are masked, and a PERSON_NAME finding containing this domain's
+    # vocabulary is excluded. Keep the pattern in step with adapters/gcp/dlp_redaction.py.
+    rule_set {
+      info_types {
+        name = "PERSON_NAME"
+      }
+      rules {
+        exclusion_rule {
+          matching_type = "MATCHING_TYPE_PARTIAL_MATCH"
+          regex {
+            pattern = "(?i)\\b(MAS|HKMA|APRA|ASIC|AFCA|JFSA|FSA|FCA|FIDReC|FDRC|FOS|Financial Ombudsman|Ombudsman|Monetary Authority|Notice|Guidelines?|Consumer Duty|Fair Dealing|Treating Customers Fairly|TCF|Code of Banking Practice|PayNow|PayLah|GIRO|FAST|NETS|Visa|Mastercard|Amex|American Express|UnionPay|SWIFT|Octopus|FPS)\\b"
+          }
+        }
+      }
+    }
+
+    min_likelihood = "LIKELY"
     include_quote  = false # never echo the matched PII back out (P-04)
   }
 }

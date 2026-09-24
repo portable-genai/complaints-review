@@ -65,6 +65,17 @@ def _container() -> Container:
     return build_container()
 
 
+def _echo_review_routing(routing: Any) -> None:
+    """Say what happened to the human-review hand-off, in the words the operator needs."""
+    from ..adapters.controls import REVIEW_ROUTING_TEXT, ReviewRouting
+
+    outcome = routing.outcome
+    color = typer.colors.GREEN if outcome is ReviewRouting.ROUTED else typer.colors.YELLOW
+    if outcome in (ReviewRouting.FAILED, ReviewRouting.OFF):
+        color = typer.colors.RED
+    typer.secho(f"human review hand-off: {outcome.value}. {REVIEW_ROUTING_TEXT[outcome]}", fg=color)
+
+
 def _deps() -> Any:
     """Import the ``api.deps`` factory module lazily."""
     try:
@@ -243,13 +254,21 @@ def review(
 ) -> None:
     """Produce a full cited complaint review (summary, categorisation, flags, draft)."""
 
+    from ..adapters.controls import RecordingReviewRouter
+
+    routing: Any = None
+
     def _do() -> ComplaintReview:
-        svc = _deps().build_review_service(_container())
+        nonlocal routing
+        container = _container()
+        routing = RecordingReviewRouter(container.review_router)
+        svc = _deps().build_review_service(container, review_router=routing)
         file = _build_file(file_id, narrative, product, channel, received_date, customer_ref)
         return svc.review(file, actor=_CLI_ACTOR)
 
     result = _run("review", _do)
     _print_review(result)
+    _echo_review_routing(routing)
 
 
 @app.command()

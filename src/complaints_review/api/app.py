@@ -36,11 +36,12 @@ from ..domain.services import ComplaintReviewService
 from ..envread import read_env_setting, setting_or_default
 from ..ports.identity import VERIFIED
 from . import deps
+from .disclosure import disclose
 from .schemas import (
     AgentCardModel,
     ComplaintReviewModel,
-    ComplaintSummaryModel,
-    DraftResponseModel,
+    ComplaintSummaryResponse,
+    DraftResponseResult,
     HealthResponse,
     ReviewRequest,
 )
@@ -276,6 +277,8 @@ def review(
     request: ReviewRequest,
     principal: CurrentPrincipal,
     service: Annotated[ComplaintReviewService, Depends(deps.get_review_service)],
+    redaction: deps.RequestRedaction,
+    routing: deps.RequestReviewRouter,
 ) -> JSONResponse | ComplaintReviewModel:
     """Produce a full cited complaint review (summary, categorisation, flags, draft)."""
     # Object-level authorization: entitlement to the named complaint is decided server-side
@@ -294,15 +297,16 @@ def review(
         )
     except (GuardrailBlockedError, RetrievalEmptyError) as exc:
         return _blocked_response(request.file.id, str(exc))
-    return ComplaintReviewModel.from_domain(result)
+    return disclose(ComplaintReviewModel.from_domain(result), redaction=redaction, routing=routing)
 
 
-@app.post("/v1/summary", response_model=ComplaintSummaryModel, tags=["artifacts"])
+@app.post("/v1/summary", response_model=ComplaintSummaryResponse, tags=["artifacts"])
 def summary(
     request: ReviewRequest,
     principal: CurrentPrincipal,
     service: Annotated[ComplaintReviewService, Depends(deps.get_review_service)],
-) -> JSONResponse | ComplaintSummaryModel:
+    redaction: deps.RequestRedaction,
+) -> JSONResponse | ComplaintSummaryResponse:
     """Produce only the structured complaint-file summary."""
     try:
         entitlements.complaint_scope(principal, request.file.id)
@@ -317,15 +321,16 @@ def summary(
         )
     except (GuardrailBlockedError, RetrievalEmptyError) as exc:
         return _blocked_response(request.file.id, str(exc))
-    return ComplaintSummaryModel.from_domain(result)
+    return disclose(ComplaintSummaryResponse.from_domain(result), redaction=redaction)
 
 
-@app.post("/v1/draft-response", response_model=DraftResponseModel, tags=["artifacts"])
+@app.post("/v1/draft-response", response_model=DraftResponseResult, tags=["artifacts"])
 def draft_response(
     request: ReviewRequest,
     principal: CurrentPrincipal,
     service: Annotated[ComplaintReviewService, Depends(deps.get_review_service)],
-) -> JSONResponse | DraftResponseModel:
+    redaction: deps.RequestRedaction,
+) -> JSONResponse | DraftResponseResult:
     """Produce only the draft regulator/customer response (a draft, never sent)."""
     try:
         entitlements.complaint_scope(principal, request.file.id)
@@ -340,7 +345,7 @@ def draft_response(
         )
     except (GuardrailBlockedError, RetrievalEmptyError) as exc:
         return _blocked_response(request.file.id, str(exc))
-    return DraftResponseModel.from_domain(result)
+    return disclose(DraftResponseResult.from_domain(result), redaction=redaction)
 
 
 # --------------------------------------------------------------------------- #
