@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from hex_service_kit.localmodel import LocalModelSettings
 from hex_service_kit.netdefaults import ConfiguredEmptyError, EnvSetting
 
 from .envread import boolean_setting, optional_setting, read_env_setting, setting_or_default
@@ -34,7 +35,16 @@ _PROFILE_ENV = "COMPLAINTS_PROFILE"
 
 #: Every profile the adapter table binds. An exact, case-sensitive membership test, so a
 #: mis-capitalised value is a boot failure rather than a profile that matches no posture.
-RUNTIME_PROFILES = frozenset({"local", "gcp", "platform", "onprem"})
+RUNTIME_PROFILES = frozenset({"local", "live", "gcp", "platform", "onprem"})
+
+#: The laptop profiles: both bind the seeded personas, the in-process stores and the local
+#: review outbox, so both take the laptop posture (loopback bind, localhost CORS origins).
+#: ``live`` differs from ``local`` only in which model answers: the fleet's shared local
+#: open-weight model, through :mod:`hex_service_kit.localmodel`.
+LAPTOP_PROFILES: frozenset[str] = frozenset({"local", "live"})
+
+#: The adapter class that answers under ``live``, so the banner can name its model.
+_LOCAL_MODEL_ADAPTER = "LocalModelLLMAdapter"
 
 #: The profile string handed to every INTERNET-FACING relaxation when ``COMPLAINTS_PROFILE``
 #: was never set. Deliberately NOT a member of :data:`RUNTIME_PROFILES` and it never reaches
@@ -546,6 +556,10 @@ class Settings:
         binding = str(table.get(self.profile, "") or "")
         if not binding:
             return "no-model"
+        if binding.endswith(f":{_LOCAL_MODEL_ADAPTER}"):
+            # The laptop ``live`` lane's shared local model: name the model the kit client will
+            # call (``LOCAL_MODEL``, else the fleet default), not the word "local".
+            return LocalModelSettings.from_env().model
         if self.profile not in _MANAGED_PROFILES:
             # The on-prem adapters are fail-fast migration placeholders: they raise rather than
             # generating, so naming a model would advertise one that never answers.

@@ -5,7 +5,7 @@
 
 project_id: ${GOOGLE_CLOUD_PROJECT:-your-gcp-project}
 region: asia-southeast1            # Singapore : MAS/HKMA/APRA/FSA data residency
-profile: ${COMPLAINTS_PROFILE}         # gcp | local | platform | onprem. Deliberately has NO :-local fallback: an unset COMPLAINTS_PROFILE must stay unset rather than materialising here as a written-down choice, because "nobody chose" and "chose local" get different postures. Prod sets COMPLAINTS_PROFILE=gcp explicitly
+profile: ${COMPLAINTS_PROFILE}         # gcp | local | live | platform | onprem. Deliberately has NO :-local fallback: an unset COMPLAINTS_PROFILE must stay unset rather than materialising here as a written-down choice, because "nobody chose" and "chose local" get different postures. Prod sets COMPLAINTS_PROFILE=gcp explicitly
 kms_key: ${COMPLAINTS_KMS_KEY:-}       # regional Cloud KMS key for CMEK
 grounding_enabled: ${COMPLAINTS_GROUNDING_ENABLED:-false}
 
@@ -111,56 +111,67 @@ adapters:
     gcp: complaints_review.adapters.gcp.iap_identity:IapIdentityAdapter
     platform: complaints_review.adapters.gcp.iap_identity:IapIdentityAdapter
     local: complaints_review.adapters.local.identity:LocalPersonaIdentityAdapter
+    live: complaints_review.adapters.local.identity:LocalPersonaIdentityAdapter
     onprem: complaints_review.adapters.onprem.identity:OnPremIdentityAdapter
   extraction:
     gcp: complaints_review.adapters.gcp.document_ai_extraction:DocumentAiExtractionAdapter
     platform: complaints_review.adapters.gcp.document_ai_extraction:DocumentAiExtractionAdapter
     local: complaints_review.adapters.local.extraction:LocalDocumentExtractionAdapter
+    live: complaints_review.adapters.local.extraction:LocalDocumentExtractionAdapter
     onprem: complaints_review.adapters.onprem.extraction:OnPremExtractionAdapter
   knowledge_base:
     gcp: complaints_review.adapters.gcp.agent_search_kb:AgentSearchKnowledgeBaseAdapter
     local: complaints_review.adapters.local.knowledge_base:LocalFtsKnowledgeBaseAdapter
+    live: complaints_review.adapters.local.knowledge_base:LocalFtsKnowledgeBaseAdapter
     platform: complaints_review.adapters.platform.remote_knowledge_base:RemoteKnowledgeBaseAdapter
     onprem: complaints_review.adapters.onprem.knowledge_base:OnPremKnowledgeBaseAdapter
   llm:
     gcp: complaints_review.adapters.gcp.gemini_llm:GeminiLLMAdapter
     platform: complaints_review.adapters.gcp.gemini_llm:GeminiLLMAdapter
     local: complaints_review.adapters.local.llm:LocalDeterministicLLMAdapter
+    live: complaints_review.adapters.live.llm:LocalModelLLMAdapter
     onprem: complaints_review.adapters.onprem.llm:OnPremLLMAdapter
   guardrail:
     gcp: complaints_review.adapters.gcp.model_armor_guardrail:ModelArmorGuardrailAdapter
     local: complaints_review.adapters.local.guardrail:LocalHeuristicGuardrailAdapter
+    live: complaints_review.adapters.local.guardrail:LocalHeuristicGuardrailAdapter
     platform: complaints_review.adapters.platform.remote_guardrail:RemoteGuardrailAdapter
     onprem: complaints_review.adapters.onprem.guardrail:OnPremGuardrailAdapter
   redaction:
     gcp: complaints_review.adapters.gcp.dlp_redaction:DlpRedactionAdapter
     local: complaints_review.adapters.local.redaction:LocalRegexRedactionAdapter
+    live: complaints_review.adapters.local.redaction:LocalRegexRedactionAdapter
     platform: complaints_review.adapters.platform.remote_redaction:RemoteRedactionAdapter
     onprem: complaints_review.adapters.onprem.redaction:OnPremRedactionAdapter
   audit:
     gcp: complaints_review.adapters.gcp.cloud_logging_audit:CloudLoggingAuditAdapter
     local: complaints_review.adapters.local.audit:LocalAppendOnlyAuditAdapter
+    live: complaints_review.adapters.local.audit:LocalAppendOnlyAuditAdapter
     platform: complaints_review.adapters.platform.remote_audit:RemoteAuditAdapter
     onprem: complaints_review.adapters.onprem.audit:OnPremAuditAdapter
   tracer:
     gcp: complaints_review.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
     platform: complaints_review.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
     local: complaints_review.adapters.local.tracer:LocalNoopTracerAdapter
+    live: complaints_review.adapters.local.tracer:LocalNoopTracerAdapter
     onprem: complaints_review.adapters.onprem.tracer:OnPremTracerAdapter
   evaluation:
     gcp: complaints_review.adapters.gcp.genai_eval:GenAiEvalAdapter
     local: complaints_review.adapters.local.evaluation:LocalOfflineEvalAdapter
+    live: complaints_review.adapters.local.evaluation:LocalOfflineEvalAdapter
     platform: complaints_review.adapters.platform.remote_evaluation:RemoteEvaluationAdapter
     onprem: complaints_review.adapters.onprem.evaluation:OnPremEvalAdapter
   registry:
     gcp: complaints_review.adapters.gcp.a2a_registry:A2ARegistryAdapter
     local: complaints_review.adapters.local.registry:LocalRegistryAdapter
+    live: complaints_review.adapters.local.registry:LocalRegistryAdapter
     platform: complaints_review.adapters.platform.remote_registry:RemoteRegistryAdapter
     onprem: complaints_review.adapters.onprem.registry:OnPremRegistryAdapter
   tool_catalog:
     gcp: complaints_review.adapters.gcp.mcp_tool_catalog:McpToolCatalogAdapter
     platform: complaints_review.adapters.gcp.mcp_tool_catalog:McpToolCatalogAdapter
     local: complaints_review.adapters.local.tool_catalog:LocalToolCatalogAdapter
+    live: complaints_review.adapters.local.tool_catalog:LocalToolCatalogAdapter
     onprem: complaints_review.adapters.onprem.tool_catalog:OnPremToolCatalogAdapter
   # Rule R8: a complaint review always requires human review, so the producer routes it to the
   # human-review-console Human-Review & Maker-Checker Console rather than terminating in a per-repo boolean.
@@ -170,4 +181,5 @@ adapters:
     gcp: complaints_review.adapters.platform.review_router:PlatformReviewRouter
     platform: complaints_review.adapters.platform.review_router:PlatformReviewRouter
     local: complaints_review.adapters.local.review_router:LocalReviewRouter
+    live: complaints_review.adapters.local.review_router:LocalReviewRouter
     onprem: complaints_review.adapters.onprem.review_router:OnPremReviewRouter

@@ -250,7 +250,7 @@ enforces per user ACLs in retrieval. Each layer assumes the others may be bypass
 
 | Variable | Side | Purpose |
 |----------|------|---------|
-| `COMPLAINTS_PROFILE` | backend | `local` \| `gcp` \| `platform` \| `onprem`. Selects the identity adapter (and the whole adapter set). |
+| `COMPLAINTS_PROFILE` | backend | `local` \| `live` \| `gcp` \| `platform` \| `onprem`. Selects the identity adapter (and the whole adapter set). |
 | `COMPLAINTS_IAP_AUDIENCE` | backend | The IAP audience string (the exact structured resource path) the backend verifies against. Required in `gcp`/`platform`. |
 | `COMPLAINTS_CORS_ORIGINS` | backend | Explicit origin allowlist for the cross origin / standalone case (comma separated). Never `"*"`; unset falls back to the localhost dev origins. |
 | `COMPLAINTS_FRAME_ANCESTORS` | backend | CSP `frame-ancestors` allowlist: parent origins permitted to iframe the UI. Defaults to `'self'`. |

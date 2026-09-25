@@ -29,7 +29,7 @@ from fastapi.responses import JSONResponse
 from hex_service_kit import cors_allowlist, resolve_bind_host
 from hex_service_kit.web import add_loopback_exposure_guard
 
-from ..config import end_user_auth_kind
+from ..config import LAPTOP_PROFILES, end_user_auth_kind
 from ..domain import entitlements
 from ..domain.errors import AccessDeniedError, GuardrailBlockedError, RetrievalEmptyError
 from ..domain.services import ComplaintReviewService
@@ -133,8 +133,10 @@ def _cors_origins() -> list[str]:
         configured = [origin.strip() for origin in raw.split(",") if origin.strip()]
         _refuse_wildcard(configured, _CORS_ORIGINS_ENV)
         return configured
+    # ``live`` is the same laptop stack as ``local``, so it takes the same dev-origin grant.
+    exposure = deps.get_settings().exposure_profile
     resolved = cors_allowlist(
-        deps.get_settings().exposure_profile,
+        "local" if exposure in LAPTOP_PROFILES else exposure,
         origins_env=_CORS_ORIGINS_ENV,
         dev_origins=tuple(_DEV_ORIGINS),
     )

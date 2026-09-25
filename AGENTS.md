@@ -17,7 +17,7 @@ complaint / conduct files.
 | Catalog id | `complaints-review` |
 | Package | `src/complaints_review/` |
 | Profile variable | `COMPLAINTS_PROFILE` |
-| Adapter families | `gcp`, `local`, `onprem`, `platform` |
+| Adapter families | `gcp`, `live`, `local`, `onprem`, `platform` |
 | Gate | `make check` |
 
 That variable is read in one module and resolved in three states: unset is no choice,
