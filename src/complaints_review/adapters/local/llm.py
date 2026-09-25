@@ -20,7 +20,9 @@ import json
 import re
 from typing import Any
 
-from ...config import Settings
+from hex_service_kit import provenance
+
+from ...config import OFFLINE_STUB_MODEL, Settings
 from ...domain.models import (
     LlmRequest,
     LlmResponse,
@@ -63,6 +65,9 @@ class LocalDeterministicLLMAdapter:
     def generate(self, request: LlmRequest) -> LlmResponse:
         source_ids = self._source_ids_from_request(request)
         body = self._body_for_schema(request.response_schema, source_ids)
+        # What answered, for the console's model pill: the same name ``generator_model``
+        # reports under this binding, so the configured pill and the answered pill agree.
+        provenance.note_model(OFFLINE_STUB_MODEL)
         return LlmResponse(
             text=json.dumps(body),
             usage=TokenUsage(input_tokens=128, output_tokens=64, thinking_tokens=32),
@@ -73,6 +78,7 @@ class LocalDeterministicLLMAdapter:
 
     def classify(self, text: str, labels: list[str]) -> str:
         # Deterministic triage: first label (the services only use this for routing).
+        provenance.note_model(OFFLINE_STUB_MODEL)
         return labels[0] if labels else ""
 
     # ------------------------------------------------------------------ #

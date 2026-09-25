@@ -62,6 +62,9 @@ class ResponseDraftingService:
             user_content=user,
             model=None,
             response_schema=_DRAFT_SCHEMA,
+            # FREE: a drafted response letter, reviewed by a human before anything is sent.
+            # ``None`` sends no temperature at all.
+            temperature=None,
         )
         response = self._llm.generate(request)
         if tracer is not None:

@@ -26,6 +26,8 @@ allows `http://localhost:3000` by default.
 | `components/ComplaintReviewView.tsx` | Renders summary, categorisation, flags, draft. |
 | `components/CitationCard.tsx` | Source-and-page citation chips. |
 | `components/SeverityBadge.tsx` | Severity pills and conduct-flag badges. |
+| `app/ModelPills.tsx` | The two pills at the top right of every page: the model that answered the last request (the configured `generator_model` from `/healthz`, dimmed, until one has), and `Search` when that answer used an online search tool. |
+| `lib/answer-provenance.mjs` | The one `window.fetch` wrapper the pills read the service's `X-Answered-By` / `X-Search-Used` headers through, on responses from `lib/api`'s base only. Covered by `npm test`. |
 | `lib/api.ts` | Thin fetch client for the FastAPI backend. |
 | `lib/types.ts` | TypeScript mirrors of the API response shapes. |
 | `lib/csp.mjs` | The ONE place the Content-Security-Policy is built, plus the nonce mint and the build-time refusal. |
