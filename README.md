@@ -124,11 +124,12 @@ make test                         # ruff + pytest on the local profile
 python eval/run_eval.py           # the `model-quality-gate` / P-08 eval gate
 ```
 
-There are four deployment profiles, selected by `COMPLAINTS_PROFILE`:
+There are five deployment profiles, selected by `COMPLAINTS_PROFILE`:
 
 | Profile | Backends | When |
 |---------|----------|------|
 | `local` | SQLite FTS5 retrieval, deterministic LLM, regex DLP, heuristic guardrail, append-only audit, no-op tracer, local parser. No Google Cloud, no API key, no emulators. | Default for dev and test: runs the whole pipeline offline on a laptop. |
+| `live` | The `local` stack, except the model port calls the fleet's shared local open-weight model (Gemma 4 31B by default) through `hex_service_kit.localmodel`; point it elsewhere with `LOCAL_MODEL_URL` / `LOCAL_MODEL`. Start it with `python -m mlx_vlm.server --model mlx-community/gemma-4-31b-it-8bit --port 8001`. | A laptop demo with real model output; same personas, loopback bind and CORS grant as `local`. Tests, CI and `make demo` stay on `local`. |
 | `gcp` | Document AI, Agent Search, Gemini, Model Armor, DLP, Cloud Logging WORM, Cloud Trace, Gen AI Evals. Needs the `[gcp]` extra (`pip install -e ".[gcp,dev]"`). | Production managed stack. |
 | `platform` | Guardrail, redaction, knowledge-base, audit, registry and eval ports over HTTP to the shared `agent-guardrail-gateway` to `agent-observability` services (see `.env.example`). | Inside the full platform. |
 | `onprem` | Fail-fast `NotImplementedError` placeholders. | Google Distributed Cloud migration target (P-02 / P-12). |

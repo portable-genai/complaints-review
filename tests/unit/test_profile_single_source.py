@@ -97,7 +97,7 @@ def test_the_settings_file_key_counts_as_a_deliberate_choice() -> None:
     assert resolve_profile({"COMPLAINTS_PROFILE": "local"}, file_profile="gcp").profile == "local"
 
 
-@pytest.mark.parametrize("value", ["bogus", "Local", "GCP", "LOCAL", "live"])
+@pytest.mark.parametrize("value", ["bogus", "Local", "GCP", "LOCAL", "Live"])
 def test_an_unknown_or_mis_capitalised_profile_is_refused_at_resolution(value: str) -> None:
     """A typo must not fall through Container._bind's documented gcp fallback, silently."""
     with pytest.raises(ValueError, match="unknown COMPLAINTS_PROFILE"):
