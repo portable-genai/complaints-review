@@ -221,13 +221,17 @@ def build_llm_request(
     model: str | None,
     response_schema: dict | None,
     thinking: ThinkingLevel = ThinkingLevel.HIGH,
-    temperature: float = 0.0,
+    temperature: float | None = 0.0,
     max_output_tokens: int = 4096,
 ) -> LlmRequest:
     """Assemble an ``LlmRequest`` with a single user message and a system prompt.
 
     ``model=None`` lets the adapter pick its configured default (the reasoning model,
     ``gemini-3.5-flash``); thinking defaults to HIGH for grounded reasoning per SPEC.
+
+    ``temperature`` defaults to the pin (``0.0``): a grounded call that forgets to choose must
+    not sample. A drafting call site frees it by passing ``None``, which the adapters turn into
+    NO temperature at all.
     """
     return LlmRequest(
         messages=(LlmMessage(role="user", content=user_content),),

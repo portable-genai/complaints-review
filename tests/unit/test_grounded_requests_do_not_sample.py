@@ -10,8 +10,13 @@ service: the shared request builder defaulted to `temperature=0.2`, so every gro
 sampled.
 
 This file is that finding applied here rather than left as one repository's history. The default
-belongs on the type and on the builder, because a call site that omits `temperature` is the
-common case and it inherits whatever the default is.
+belongs on the grounded builder, because every grounded call site goes through it and one that
+omits `temperature` inherits whatever the default is.
+
+Since 2026-09-23 sampling is decided per call: the request TYPE defaults to `None`, which every
+adapter turns into NO temperature (some models reject the parameter, so free is absent, never
+`1.0`). The builder still pins, so freeing a grounded call is an explicit act at its call site;
+only the drafted response does it (`tests/unit/test_answer_provenance.py`).
 
 **Temperature 0 is not a promise of determinism, and nothing here asserts one.** A hosted model
 can still vary across batching and model revisions. It is the strongest thing a caller controls,
@@ -26,9 +31,9 @@ from complaints_review.domain import _grounded as _b0
 from complaints_review.domain.kernel import LlmRequest
 
 
-def test_the_request_type_does_not_sample_by_default() -> None:
-    """A call site that omits temperature is the common case, so the type carries the pin."""
-    assert LlmRequest.__dataclass_fields__["temperature"].default == 0.0
+def test_the_request_type_leaves_sampling_to_the_call() -> None:
+    """``None`` on the type means "send no temperature"; the builder below carries the pin."""
+    assert LlmRequest.__dataclass_fields__["temperature"].default is None
 
 
 def test_the_builder_in__grounded_0_does_not_sample_by_default() -> None:

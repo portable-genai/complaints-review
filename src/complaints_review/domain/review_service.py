@@ -337,6 +337,9 @@ class ComplaintReviewService:
             user_content=user,
             model=None,
             response_schema=_SUMMARY_SCHEMA,
+            # PINNED: this is structured field extraction (issue, products, channel, timeline,
+            # parties), and the channel it returns is classified onto an enum.
+            temperature=0.0,
         )
         response = self._llm.generate(request)
         g.maybe_record_usage(self._tracer, response)

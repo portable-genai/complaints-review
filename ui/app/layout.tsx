@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { ProvenanceBanner } from "./ProvenanceBanner";
+import { ModelPills } from "./ModelPills";
 import "./globals.css";
 
 // REQUIRED by the nonce CSP, not a performance preference. `proxy.ts` mints a per-request
@@ -20,18 +20,20 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   // EMBED mode: the host page owns the chrome, so drop our header/branding and the outer
-  // max-w-4xl wrapper when NEXT_PUBLIC_EMBED === "1".
+  // max-w-4xl wrapper when NEXT_PUBLIC_EMBED === "1". Both shapes leave the top 32px or more to
+  // the fixed model pills, so the pills never sit on the heading or a page's own controls.
   const embed = process.env.NEXT_PUBLIC_EMBED === "1";
   return (
     <html lang="en">
       <body>
-        <ProvenanceBanner />
+        {/* Mounted in the LAYOUT, not a page, so every page and every embed carries them. */}
+        <ModelPills />
         {embed ? (
-          <main className="p-4">{children}</main>
+          <main className="px-4 pb-4 pt-9">{children}</main>
         ) : (
           <>
             <header className="border-b border-ink-200 bg-white">
-              <div className="mx-auto max-w-4xl px-6 py-4">
+              <div className="mx-auto max-w-4xl px-6 pb-4 pt-8">
                 <h1 className="text-lg font-semibold text-ink-900">
                   Complaints &amp; Conduct File Review
                 </h1>

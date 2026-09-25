@@ -38,6 +38,17 @@ gate. CI runs exactly this on the `onprem` profile with no cloud credentials.
   client where a sibling service owns the capability, and an `onprem` stub that raises
   `NotImplementedError` (or a safe no-op for non-essential ports like tracing). Add the
   binding to `config/settings.yaml` and the Protocol to `tests/contract`.
+- **The model port notes what answered, and samples per call.** After a successful call the
+  `gcp` adapter calls `hex_service_kit.provenance.note_model(<the model id it called>)`, and
+  `note_search()` only when an online search tool was attached to that call; the `local` stub
+  notes `deterministic-offline-stub`; the `live` adapter needs nothing, the kit client notes
+  itself. `api/app.py` emits them as `X-Answered-By` / `X-Search-Used` (and exposes both
+  through CORS, since the console calls the service directly), and the console's pills show
+  them. `LlmRequest.temperature` is `float | None`, and `None` means the adapter sends NO
+  temperature. Pin `0.0` where the output is extracted, classified or compared (the summary
+  and the categorisation); leave drafting free (the draft response). `generator_model` must be
+  the model the adapter calls: there is no flag that swaps in another.
+  Tests: `tests/unit/test_answer_provenance.py`.
 - **Cite everything; never auto-send.** Conduct decisions carry page-level citations; the
   draft response is always a draft the system never sends (P-06 / R1).
 

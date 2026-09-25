@@ -117,6 +117,9 @@ class CategorizationService:
             user_content=user,
             model=None,
             response_schema=_CATEGORIZE_SCHEMA,
+            # PINNED: category, severity and conduct flags are classifications that feed the
+            # deterministic escalation and are compared across runs.
+            temperature=0.0,
         )
         response = self._llm.generate(request)
         if tracer is not None:
