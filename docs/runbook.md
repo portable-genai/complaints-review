@@ -40,8 +40,9 @@ to exercise the pipeline with fakes.
 ## Health and observability
 
 - `GET /healthz` reports status, active profile and region.
-- Traces go to Cloud Trace (message content OFF). Token usage is recorded as span
-  attributes for FinOps.
+- Traces go OTLP to the agent-observability collector, which redacts GenAI content and forwards
+  them to Cloud Trace (message content OFF). The `gcp` profile refuses to trace without
+  `OTEL_EXPORTER_OTLP_ENDPOINT`. Token usage is recorded as span attributes for FinOps.
 - Audit records go to the locked WORM Cloud Logging bucket (~7-year retention). Records are
   already redacted; no raw PII is ever written.
 

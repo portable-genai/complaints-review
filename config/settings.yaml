@@ -148,8 +148,8 @@ adapters:
     platform: complaints_review.adapters.platform.remote_audit:RemoteAuditAdapter
     onprem: complaints_review.adapters.onprem.audit:OnPremAuditAdapter
   tracer:
-    gcp: complaints_review.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
-    platform: complaints_review.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
+    gcp: complaints_review.adapters.gcp.tracer:CloudTracerAdapter
+    platform: complaints_review.adapters.gcp.tracer:CloudTracerAdapter
     local: complaints_review.adapters.local.tracer:LocalNoopTracerAdapter
     live: complaints_review.adapters.local.tracer:LocalNoopTracerAdapter
     onprem: complaints_review.adapters.onprem.tracer:OnPremTracerAdapter
