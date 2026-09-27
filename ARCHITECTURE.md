@@ -60,7 +60,7 @@ flowchart LR
 | `GuardrailPort` | Screen input + output (`agent-guardrail-gateway`) | Model Armor | heuristic injection screen | `agent-guardrail-gateway` `/v1/guardrail/screen` | stub |
 | `PIIRedactionPort` | De-identify PII (`agent-guardrail-gateway`) | DLP | regex (NRIC, email, phone) | `agent-guardrail-gateway` `/v1/redact` | stub |
 | `AuditSinkPort` | WORM audit (`agent-observability`) | Cloud Logging | append-only SQLite | `agent-observability` `/v1/audit` | stub |
-| `ObservabilityTracerPort` | Trace spans (`agent-observability`) | Cloud Trace | no-op spans | n/a | no-op |
+| `ObservabilityTracerPort` | Trace spans (`agent-observability`) | OTLP to the `agent-observability` collector, then Cloud Trace | no-op spans | n/a | no-op |
 | `EvaluationGatePort` | Promotion eval (`model-quality-gate`) | Gen AI evals | offline `run_eval.py` | `model-quality-gate` `/v1/evaluations` | stub |
 | `AgentRegistryPort` | A2A registry (`agent-registry`) | in-process | in-process (Firestore emulator opt-in) | `agent-registry` `/v1/agents` | stub |
 | `ToolCatalogPort` | Governed MCP tools (`agent-registry`) | in-process | in-process | n/a | stub |
