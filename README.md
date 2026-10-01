@@ -98,12 +98,13 @@ sequenceDiagram
     else allowed
         Svc->>Ext: extract(each document) then redact
         Ext-->>Svc: redacted document extracts
+        Svc->>Grd: screen(complaint text with extracts, INPUT)
         Svc->>KB: search(policy and regulatory guidance, actor ACL)
         KB-->>Svc: cited policy passages
         Svc->>LLM: summarise, categorise, draft response
         LLM-->>Svc: structured artifacts
         Note over Svc: deterministic conduct flags added, vulnerable customer and deadline risk
-        Svc->>Grd: screen(draft response, OUTPUT)
+        Svc->>Grd: screen(draft response, then every other model-written field, OUTPUT)
         Grd-->>Svc: verdict allowed is true
         Svc->>Aud: record(AuditEvent decision is ESCALATED, redacted)
         Svc-->>Officer: ComplaintReview (draft never sent, human reviews)
