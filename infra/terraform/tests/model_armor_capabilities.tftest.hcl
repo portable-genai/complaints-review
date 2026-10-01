@@ -19,6 +19,11 @@ variables {
   org_id     = "123456789012"
   # Named because it has no default; false keeps a plan from ever describing a locked bucket.
   worm_locked = false
+  # Slice 7 turned these reversible controls off by default on 2026-10-01. The runs in this
+  # file were written under the old default, so the file states it; a run that sets one
+  # explicitly still overrides it. posture_defaults.tftest.hcl pins the new default.
+  enable_vpc_sc       = true
+  enable_org_policies = true
 }
 
 run "full_capabilities_stated_request_both_regional_features" {

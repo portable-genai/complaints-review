@@ -114,9 +114,9 @@ variable "vpc_network_name" {
 }
 
 variable "enable_vpc_sc" {
-  description = "Create the VPC Service Controls perimeter around the AI/data APIs (P-03)."
+  description = "Create the VPC Service Controls perimeter around the AI/data APIs (P-03). Off by default since 2026-10-01 (slice 7 of the posture rule: a control that is not irreversible defaults off in code); terraform.tfvars.example states the production form."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "enable_org_policies" {
@@ -126,9 +126,12 @@ variable "enable_org_policies" {
     is a toggle rather than unconditional: a deploy without it still gets every per-resource
     location pin, and does NOT get the control that refuses an unpinned one. Leave it true
     wherever the residency claim is load-bearing.
+
+    Off by default since 2026-10-01 (slice 7 of the posture rule: a control that is not
+    irreversible defaults off in code); terraform.tfvars.example states the production form.
   EOT
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "resource_location_values" {
