@@ -75,12 +75,16 @@ audited):
 redact(narrative)
   -> guardrail(INPUT)                       [blocked -> audit BLOCKED + raise]
   -> extract attached documents (+ redact each extract)
+  -> guardrail(INPUT) on the composed complaint text every prompt carries
+                                            [narrative + extracts; blocked -> audit BLOCKED + raise]
   -> `enterprise-knowledge-base` retrieve policy / regulatory guidance  [empty -> audit + raise]
   -> llm summarise
   -> categorise (category + root cause + conduct flags; deterministic + LLM)
   -> llm draft response (grounded; always a draft)
   -> assemble ComplaintReview (requires_human_review=True)
-  -> guardrail(OUTPUT)                       [blocked -> audit BLOCKED + raise]
+  -> guardrail(OUTPUT) on the draft body, then on every other model-written field returned
+     (summary, root cause, regulatory relevance, conduct flag details, tone)
+                                            [blocked -> audit BLOCKED + raise]
   -> review policy (always) + escalation
   -> audit (already-redacted prompt + response)
 ```

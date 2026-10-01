@@ -8,12 +8,15 @@ output). The pipeline, in order:
       redact(complaint text)
       -> guardrail.screen(INPUT)        [blocked -> audit BLOCKED + raise]
       -> extract attached documents (+ redact each extract)
+      -> guardrail.screen(INPUT) over the complaint text every prompt carries
+                                        [narrative + extracts; blocked -> audit BLOCKED + raise]
       -> A2 retrieve policy/regulatory guidance  [empty -> audit + raise]
       -> llm summarise
       -> categorise (category + root cause + conduct flags; deterministic + LLM)
       -> llm draft response (grounded, always a draft, never sent)
       -> assemble ComplaintReview (requires_human_review=True)
-      -> guardrail.screen(OUTPUT)       [blocked -> audit BLOCKED + raise]
+      -> guardrail.screen(OUTPUT)       [draft body, then every other model-written field
+                                         returned; blocked -> audit BLOCKED + raise]
       -> review policy (always) + escalation
       -> audit.record(redacted prompt + response)
 
@@ -34,11 +37,13 @@ from .categorization_service import CategorizationService
 from .errors import GuardrailBlockedError, RetrievalEmptyError
 from .models import (
     AuditEvent,
+    Categorization,
     Channel,
     Citation,
     ComplaintFile,
     ComplaintReview,
     ComplaintSummary,
+    ConductFlag,
     Decision,
     Direction,
     DocumentExtract,
@@ -150,6 +155,7 @@ class ComplaintReviewService:
                 file, actor, "summary", principals, tenant
             )
             summary = self._summarize(file, complaint_text, passages)
+            self._screen_model_text(self._model_text(summary=summary), redacted, actor, "summary")
             self._write_audit(
                 actor, redacted, summary.issue, Decision.ESCALATED, "summary", summary.citations
             )
@@ -175,6 +181,9 @@ class ComplaintReviewService:
                 complaint_text, categorization, passages, tracer=self._tracer
             )
             draft = self._screen_draft(file, redacted, actor, draft)
+            self._screen_model_text(
+                self._model_text(draft=draft), redacted, actor, "draft_response"
+            )
             self._write_audit(
                 actor, redacted, draft.body, Decision.ESCALATED, "draft_response", draft.citations
             )
@@ -201,8 +210,15 @@ class ComplaintReviewService:
         )
         draft = self._drafter.draft(complaint_text, categorization, passages, tracer=self._tracer)
 
-        # Output guardrail over the assembled, model-authored draft body.
+        # Output guardrail over the model-authored draft body, then over every other field the
+        # model wrote that the caller is handed: summary, categorisation, conduct flags, tone.
         draft = self._screen_draft(file, redacted, actor, draft)
+        self._screen_model_text(
+            self._model_text(summary, categorization, conduct_flags, draft),
+            redacted,
+            actor,
+            "review",
+        )
 
         review = ComplaintReview(
             file_id=file.id,
@@ -270,7 +286,17 @@ class ComplaintReviewService:
         # 3) Extract attached documents, redacting each extract before use.
         extract_texts = self._extract_documents(file)
 
-        complaint_text = self._compose_complaint_text(file, screened, extract_texts)
+        # The composed complaint text, not the narrative screened above, is what every prompt
+        # carries: it adds each attached document's extract and the caller's product field.
+        # Screen it, and send the model exactly the text the guardrail saw.
+        composed = self._compose_complaint_text(file, screened, extract_texts)
+        prompt_verdict: GuardrailVerdict = self._guardrail.screen(composed, Direction.INPUT)
+        if not prompt_verdict.allowed:
+            self._write_audit(actor, redacted_narrative, "", Decision.BLOCKED, action)
+            raise GuardrailBlockedError(
+                prompt_verdict.reason or "complaint documents blocked by input guardrail"
+            )
+        complaint_text = prompt_verdict.sanitized_text or composed
 
         # 4) Governed A2 retrieval of policy + regulatory guidance. Empty -> raise.
         # The verified user's entitlement principals scope the retrieval ACL alongside the
@@ -368,17 +394,12 @@ class ComplaintReviewService:
         )
 
     # ------------------------------------------------------------------ #
-    # Output guardrail on the draft body
+    # Output guardrail on the draft body and the other model-written fields
     # ------------------------------------------------------------------ #
     def _screen_draft(
         self, file: ComplaintFile, redacted: str, actor: str, draft: DraftResponse
     ) -> DraftResponse:
-        out_verdict: GuardrailVerdict = self._guardrail.screen(draft.body, Direction.OUTPUT)
-        if not out_verdict.allowed:
-            self._write_audit(actor, redacted, "", Decision.BLOCKED, "draft_response")
-            raise GuardrailBlockedError(
-                out_verdict.reason or "draft response blocked by output guardrail"
-            )
+        out_verdict = self._screen_model_text(draft.body, redacted, actor, "draft_response")
         if out_verdict.sanitized_text and out_verdict.sanitized_text != draft.body:
             return DraftResponse(
                 body=out_verdict.sanitized_text,
@@ -388,6 +409,45 @@ class ComplaintReviewService:
                 is_draft=True,
             )
         return draft
+
+    def _screen_model_text(
+        self, text: str, redacted: str, actor: str, action: str
+    ) -> GuardrailVerdict:
+        """Screen model-written ``text`` (OUTPUT); on block, audit BLOCKED and raise."""
+        out_verdict: GuardrailVerdict = self._guardrail.screen(text, Direction.OUTPUT)
+        if not out_verdict.allowed:
+            self._write_audit(actor, redacted, "", Decision.BLOCKED, action)
+            raise GuardrailBlockedError(
+                out_verdict.reason or f"{action} blocked by output guardrail"
+            )
+        return out_verdict
+
+    @staticmethod
+    def _model_text(
+        summary: ComplaintSummary | None = None,
+        categorization: Categorization | None = None,
+        conduct_flags: tuple[ConductFlag, ...] = (),
+        draft: DraftResponse | None = None,
+    ) -> str:
+        """Every free-text field the model wrote besides the draft body, for the OUTPUT screen.
+
+        Category, severity, flag kind and channel are coerced onto enums and cannot carry text
+        the model chose; everything rendered here is returned to the caller as the model wrote
+        it. The draft body is screened on its own by ``_screen_draft``.
+        """
+        lines: list[str] = []
+        if summary is not None:
+            lines.append(f"issue: {summary.issue}")
+            lines.append(f"products: {'; '.join(summary.products)}")
+            lines += [f"timeline: {e.date} {e.event}" for e in summary.timeline]
+            lines.append(f"parties: {'; '.join(summary.parties)}")
+        if categorization is not None:
+            lines.append(f"root cause: {categorization.root_cause.description}")
+            lines.append(f"regulatory relevance: {'; '.join(categorization.regulatory_relevance)}")
+        lines += [f"conduct flag {f.kind.value}: {f.detail}" for f in conduct_flags]
+        if draft is not None:
+            lines.append(f"tone: {draft.tone}")
+        return "\n".join(lines)
 
     # ------------------------------------------------------------------ #
     # Helpers / audit
